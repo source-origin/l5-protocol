@@ -1,0 +1,9 @@
+# Local dev residue — never commit these
+node_modules/
+out/
+cache/
+lib/
+*.sol.bak*
+*.logs
+artifacts/
+.backup-*
