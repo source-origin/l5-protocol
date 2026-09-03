@@ -7,3 +7,5 @@ lib/
 *.logs
 artifacts/
 .backup-*
+__pycache__/
+*.pyc

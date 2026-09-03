@@ -39,6 +39,16 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 
 - `L5TestSuite.t.sol` — Foundry test suite skeleton covering agreement lifecycle & escrow states.
 
+## ▶️ Run the demo
+
+A **pure-Python orchestrator demo** lives in [`demo/`](demo/) — it walks a Task from Submit → Fund → Execute → Verify → Settle (and Reject/Refund/Slash) against an append-only ledger, mirroring the on-chain GraphNode machine, no chain needed. Run it with:
+
+```bash
+python demo/settlement_orchestrator.py        # watch a full lifecycle
+python demo/tests/test_l5_offchain.py         # off-chain test suite
+# then open demo/chain_born_demo.html or run demo/l5_demo_theater.py
+```
+
 **Build** (requires solc ^0.8.28 + OpenZeppelin):
 ```bash
 # Solidity imports need OpenZeppelin:

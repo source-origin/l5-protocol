@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chain-Born 公民证 · 人机皆为公民 · L5 结算演示</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(160deg,#eef4ff 0%,#f6fbff 45%,#eafaf3 100%);
+    color:#17324d; padding: 34px 20px 60px; min-height:100vh;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  header { text-align:center; margin-bottom:26px; }
+  h1 {
+    font-size:26px; letter-spacing:2px; color:#0e2c4f; margin-bottom:6px;
+  }
+  .sub { color:#3e6a97; font-size:14px; letter-spacing:1px; }
+  .rule { height:2px; width:120px; margin:14px auto 0;
+    background:linear-gradient(90deg,transparent,#2f7cf6,#16b66c,transparent);}
+  .hero { display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+    margin: 8px 0 22px; }
+  .badge {
+    border:1.5px solid #2f7cf6; color:#2f7cf6; background:#fff;
+    border-radius:999px; padding:6px 13px; font-size:13px; font-weight:600;
+    display:inline-block; margin:3px; box-shadow:0 1px 3px rgba(20,60,110,.08);
+  }
+  .badge.money {
+    border-color:#f09b3a; color:#b06a10; background:#fff7ec;
+    letter-spacing:.3px;
+  }
+  .badge.cyan { border-color:#17a2b8; color:#0e7585; background:#eafcff; }
+  .cards { display:flex; flex-direction:column; gap:14px; }
+  .card {
+    background:#ffffff; border:1px solid #dbe6f3; border-radius:14px;
+    padding:14px 18px; box-shadow:0 3px 10px rgba(20,60,110,.05);
+  }
+  .card-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .tag {
+    background:#e7effb; color:#2f7cf6; font-weight:700; font-size:12px;
+    border-radius:8px; padding:3px 8px; border:1px solid #c9dcf5;
+  }
+  h3 { font-size:16px; color:#0e2c4f; }
+  ul.lines { list-style:none; }
+  ul.lines li {
+    font-size:13.5px; color:#2c4a66;
+    padding:3px 0 3px 14px; position:relative; word-break:break-all;
+  }
+  ul.lines li::before {
+    content:"›"; position:absolute; left:0; color:#7fa8d6; font-weight:700;
+  }
+  footer { text-align:center; margin-top:26px; color:#6b87a8; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Chain-Born 公民证 · 人机皆为公民 · L5 结算演示</h1>
+    <div class="sub">源 · ORIGIN — 为 AI 智能体经济设计的清算与结算层</div>
+    <div class="rule"></div>
+  </header>
+
+  <div class="hero">
+    <span class="badge" style="border-color:#2f7cf6;color:#2f7cf6">小李 did:origin:xiaoli</span>
+    <span class="badge" style="border-color:#16b66c;color:#16b66c">Origin-Agent did:origin:origin-agent</span>
+  </div>
+  <div class="hero"><span class="badge money">flow: did:origin:xiaoli --80 uL5--> escrow[esc:gin_a100] --80--> did:origin:origin-agent</span></div>
+  <div class="hero"><span class="badge cyan">EscrowState=RELEASED</span><span class="badge cyan">AgreementState=SETTLED</span></div>
+
+  <div class="cards"><div class="card register"><div class="card-head"><span class="tag">01</span><h3>公民注册(registerAgent 语义)</h3></div><ul class="lines"><li>人类 Creator 公民 name=小李 handle=xiaoli did=did:origin:xiaoli</li><li>登记项: service[repo]=did:repo://xiaoli/agent-defi-collector; claim=首上创新:一个面向 AI 智能体的自动清算流水线原型</li><li>AI Agent 公民 name=Origin-Agent handle=origin-agent did=did:origin:origin-agent</li><li>登记项(capability/category): capability[processing-agent]=按 L5 规则自动执行分账与结算任务</li></ul></div><div class="card resolve"><div class="card-head"><span class="tag">02</span><h3>公民证可查(grant_citizenship_resolver)</h3></div><ul class="lines"><li>did:origin:xiaoli -> Human Creator 公民(creator)</li><li>did:origin:origin-agent -> AI Agent 公民(agent)</li></ul></div><div class="card delegation"><div class="card-head"><span class="tag">03</span><h3>公民授权(L5Delegation 镜像:人类把子任务委托给 AI 公民)</h3></div><ul class="lines"><li>dlg:0001: did:origin:xiaoli 授权 did:origin:origin-agent 处理 task://xiaoli/origin-agent/*</li><li>max_per_request=100 period=86400 本次授权额 80 -> 通过=True</li><li>(delegator 可随时 revoke = 人类保留最高权,宪法第0条)</li></ul></div><div class="card contract"><div class="card-head"><span class="tag">04</span><h3>公民间契约签约(Consumer=Creator 公民, Provider=Agent 公民)</h3></div><ul class="lines"><li>agreement=agreement_origin_a100</li><li>payer=did:origin:xiaoli  payee=did:origin:origin-agent</li><li>交付物=Creator 登记的创新代码 repo('did:repo://xiaoli/agent-defi-collector')</li></ul></div><div class="card fund"><div class="card-head"><span class="tag">05</span><h3>FUND: 资金经 escrow 托管锁定(create_and_fund)</h3></div><ul class="lines"><li>锁入 escrow=esc:gin_a100 金额=80 escrow=FUNDED</li><li>cross_check: FUND: 资金锁入 escrow + agreement 已签名 []</li></ul></div><div class="card execute"><div class="card-head"><span class="tag">06</span><h3>EXECUTE: Agent 公民完成交付(off-chain 劳务,编排器记录)</h3></div><ul class="lines"><li>Origin-Agent 依授权按规则执行分账/结算,交付创意代码 repo</li><li>agreement -> COMPLETED</li></ul></div><div class="card verify"><div class="card-head"><span class="tag">07</span><h3>VERIFY: 交付被验(verify_delivery,资金未动)</h3></div><ul class="lines"><li>escrow=VERIFIED agreement=COMPLETED</li><li>cross_check: VERIFY: escrow 验证资金未动 + agreement 工作交付 []</li></ul></div><div class="card settle"><div class="card-head"><span class="tag">08</span><h3>SETTLE: 资金释放给 Agent 公民 + agreement 握手 Settled</h3></div><ul class="lines"><li>escrow=RELEASED agreement=SETTLED</li><li>cross_check: SETTLE: 资金释放给 Provider + agreement 到 Settled []</li></ul></div><div class="card final"><div class="card-head"><span class="tag">09</span><h3>收尾: 双公民链上身份 + 资金终态(Settled 落地)</h3></div><ul class="lines"><li>Creator 公民 name=小李 did=did:origin:xiaoli</li><li>Agent  公民 name=Origin-Agent did=did:origin:origin-agent</li><li>资金流向: did:origin:xiaoli 付 80 uL5 -> escrow(esc:gin_a100) -> 已付 payee=80 退回=0</li><li>EscrowState=RELEASED  AgreementState=SETTLED</li></ul></div></div>
+
+  <footer>
+    did 前缀统一 = 人机平权; Escrow 双账本托管驱动 agreement 握手 Settled;
+    全程 off-chain 模拟,镜像 AgentIdentity.sol / L5Delegation.sol 语义。
+  </footer>
+</div>
+</body>
+</html>
