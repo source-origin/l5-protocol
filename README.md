@@ -72,5 +72,7 @@ Independent builders already working on agent escrow, reputation, and autonomous
 
 - **Discuss Ideas** → GitHub Discussions
 - **Report / propose** → GitHub Issues
+- **How to contribute** → [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- **Where this is going** → [`ROADMAP.md`](ROADMAP.md)
 
 > _Humans are the highest authority. Power flows from *verified* innovation — not from capital, not from seniority._ — Constitution L0
