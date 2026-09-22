@@ -63,6 +63,14 @@ contract L5x402 is Ownable, ReentrancyGuard {
         Failed // 结算失败/作废
     }
 
+    /// @notice Finality dimension of a receipt (Boundary rule, see CONTRIBUTION-SPEC 1).
+    /// A receipt declares what it proves and stops. It never claims a finality it
+    /// does not have; a later verdict is the artifact that holds the back-reference.
+    enum ReceiptFinality {
+        Final, // auto-conditioned release: no external verdict exists, receipt is terminal
+        ProvisionalSubjectToVerdict // post-release dispute: value moved, finality pending verdict
+    }
+
     // ═══════════════════════════════════════════════════
     // STRUCTS
     // ═══════════════════════════════════════════════════
@@ -82,6 +90,17 @@ contract L5x402 is Ownable, ReentrancyGuard {
         uint256 timestamp; // 登记时间
         ReceiptStatus status; // 状态
         bool evidenceVerified; // 服务端签名证据是否通过
+        ReceiptFinality finality; // 终局性：Final | ProvisionalSubjectToVerdict
+        bytes32 verdictRef; // 经裁定释放时引用已先铸的 verdict digest；否则 0
+    }
+
+    /// @notice Post-hoc verdict artifact. Minted after the receipt it judges, so
+    /// it holds the backward reference (receiptRef) -- never the other way around.
+    struct Verdict {
+        bytes32 verdictId; // verdict digest
+        bytes32 receiptRef; // the receipt this verdict judges (back-reference)
+        bool isFinal; // whether this verdict renders the release final
+        uint256 timestamp;
     }
 
     /// @notice 权限管理器快照（对齐 x402 checklist #6）
@@ -115,6 +134,11 @@ contract L5x402 is Ownable, ReentrancyGuard {
     address public identityContract; // AgentIdentity 地址
     address public escrowContract; // AgentEscrow 地址（争议时托管）
 
+    // 裁决存储：verdictId → Verdict（后铸工件持有反向引用）
+    mapping(bytes32 => Verdict) public verdicts;
+    // receiptId → 其后铸的 verdict
+    mapping(bytes32 => bytes32) public verdictOfReceipt;
+
     // 记录数
     uint256 public receiptCount;
     uint256 public snapshotCount;
@@ -138,6 +162,14 @@ contract L5x402 is Ownable, ReentrancyGuard {
     event ReceiptDisputed(bytes32 indexed receiptId, string reason, uint256 timestamp);
 
     event ReceiptRefunded(bytes32 indexed receiptId, uint256 refundAmount, uint256 timestamp);
+
+    event ReceiptMarkedProvisional(bytes32 indexed receiptId, uint256 timestamp);
+
+    /// @notice Adjudicated path: receipt cites a verdict minted before it.
+    event ReceiptCitedVerdict(bytes32 indexed receiptId, bytes32 indexed verdictRef, uint256 timestamp);
+
+    /// @notice Post-hoc path: a verdict minted after the receipt back-references it.
+    event VerdictRecorded(bytes32 indexed verdictId, bytes32 indexed receiptRef, bool isFinal, uint256 timestamp);
 
     event SnapshotUpdated(
         bytes32 indexed policyId, address indexed delegate, uint256 spentTotal, uint256 requestCount, uint256 timestamp
@@ -253,7 +285,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
             permissionHash: _permissionHash,
             timestamp: block.timestamp,
             status: ReceiptStatus.Pending,
-            evidenceVerified: false
+            evidenceVerified: false,
+            finality: ReceiptFinality.Final, // auto path default; adjudicated path overrides via attachVerdict
+            verdictRef: bytes32(0)
         });
 
         payeeReceipts[_payee].push(receiptId);
@@ -358,6 +392,59 @@ contract L5x402 is Ownable, ReentrancyGuard {
         IERC20(r.token).safeTransferFrom(r.payee, r.payer, _refundAmount);
         r.status = ReceiptStatus.Refunded;
         emit ReceiptRefunded(_receiptId, _refundAmount, block.timestamp);
+        return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // FINALITY / BOUNDARY (adjudicated + post-hoc paths)
+    // ═══════════════════════════════════════════════════
+
+    /// @notice Adjudicated path: the verdict was minted first (off-chain, signed)
+    /// and this receipt consumes it -- the receipt holds the backward reference.
+    function attachVerdict(bytes32 _receiptId, bytes32 _verdictDigest) external onlyAdmin returns (bool) {
+        PaymentReceipt storage r = receipts[_receiptId];
+        require(r.receiptId != bytes32(0), "L5x402: no receipt");
+        require(_verdictDigest != bytes32(0), "L5x402: empty verdict");
+        require(r.verdictRef == bytes32(0), "L5x402: verdict already set");
+        r.verdictRef = _verdictDigest;
+        r.finality = ReceiptFinality.Final;
+        emit ReceiptCitedVerdict(_receiptId, _verdictDigest, block.timestamp);
+        return true;
+    }
+
+    /// @notice Post-release dispute: the receipt cannot cite a verdict that did
+    /// not exist when it was minted, so it declares itself provisional and stops.
+    function markProvisional(bytes32 _receiptId) external onlyAdmin returns (bool) {
+        PaymentReceipt storage r = receipts[_receiptId];
+        require(r.receiptId != bytes32(0), "L5x402: no receipt");
+        require(r.finality == ReceiptFinality.Final, "L5x402: already provisional");
+        r.finality = ReceiptFinality.ProvisionalSubjectToVerdict;
+        emit ReceiptMarkedProvisional(_receiptId, block.timestamp);
+        return true;
+    }
+
+    /// @notice Post-hoc verdict: minted after the receipt, so it holds the
+    /// backward reference. Flipping finality is the verdict's claim to make.
+    function recordPostHocVerdict(bytes32 _receiptId, bytes32 _verdictDigest, bool _isFinal)
+        external
+        onlyAdmin
+        returns (bool)
+    {
+        PaymentReceipt storage r = receipts[_receiptId];
+        require(r.receiptId != bytes32(0), "L5x402: no receipt");
+        require(_verdictDigest != bytes32(0), "L5x402: empty verdict");
+        require(verdicts[_verdictDigest].verdictId == bytes32(0), "L5x402: duplicate verdict");
+        verdicts[_verdictDigest] = Verdict({
+            verdictId: _verdictDigest,
+            receiptRef: _receiptId, // backward reference
+            isFinal: _isFinal,
+            timestamp: block.timestamp
+        });
+        verdictOfReceipt[_receiptId] = _verdictDigest;
+        if (_isFinal) {
+            r.finality = ReceiptFinality.Final;
+        }
+        emit VerdictRecorded(_verdictDigest, _receiptId, _isFinal, block.timestamp);
         return true;
     }
 
