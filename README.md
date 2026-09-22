@@ -21,23 +21,34 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 
 ---
 
-## 📦 Contracts (`contracts/`)
+## 📦 Contracts (`src/`)
 
 | Contract | Role | Key ideas |
 |---|---|---|
 | **AgentIdentity.sol** | Agent = ERC-721 identity (NFT), ERC-8004-native | portability over soulbound; recovery authority = human (Constitution L0); append-only identity log |
-| **AgentAgreement.sol** | 9-state agreement FSM + EIP-712 typed signatures | LangGraph-injected: GraphNode enum + Checkpoint[] for crash-recoverable execution (no double-spend on replay) |
+| **AgentAgreement.sol** | 9-state agreement FSM + EIP-712 typed signatures | M-of-N signing; external-signer compatible |
+| **AgentAgreementV3.sol** | v0.3 — LangGraph checkpoint injection | GraphNode enum + Checkpoint[] for crash-recoverable execution (no double-spend on replay) |
 | **AgentEscrow.sol** | 6-state escrow lifecycle | three-state trust-minimized custody, multi-peg escrow, dispute-deposit mechanism |
 | **L5Delegation.sol** | Delegated authority & cross-account action | boundary attestation, revocable delegation to counter credit-washing |
-| **L5x402.sol** | x402-style micro-payment gate | pay-per-request access control for agent APIs; replay protection |
+| **L5x402.sol** | x402-style micro-payment gate | pay-per-request access control for agent APIs; replay protection; receipt evidence |
+| **CreditScore.sol** | On-chain credit primitive | contribution-based reputation |
+| **YUAN.sol** | ORIGIN native token | settlement unit for agent value flow |
+
+**Layout:** `src/` (8 contracts) · `test/` (5 suites / 42 tests) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
 
 **Audit note:** contracts are a work-in-progress research-grade implementation. Do **not** use with real funds without a professional audit. See `README` "Status".
 
 ---
 
-## 🧪 Tests (`tests/`)
+## 🧪 Tests (`test/`)
 
-- `L5TestSuite.t.sol` — Foundry test suite skeleton covering agreement lifecycle & escrow states.
+Foundry suite — **42 tests, all passing** (`forge test`):
+
+- `L5Core.t.sol` — identity, agreement + escrow lifecycle, payment channels, notifications
+- `L5Delegation.t.sol` — delegated authority, revocation, boundary attestation
+- `L5x402.t.sol` — payment-requirement verification, receipt evidence, replay protection
+- `AgentAgreementV3Checkpoint.t.sol` — crash-recoverable checkpoint execution
+- `MockERC20.t.sol` — test token used by the delegation/x402 suites
 
 ## ▶️ Run the demo
 
@@ -51,12 +62,9 @@ python demo/tests/test_l5_offchain.py         # off-chain test suite
 
 **Build** (requires solc ^0.8.28 + OpenZeppelin):
 ```bash
-# Solidity imports need OpenZeppelin:
-npm i @openzeppelin/contracts@^5
-# or with Foundry:
-forge install OpenZeppelin/openzeppelin-contracts
-forge build
-forge test
+git submodule update --init --recursive   # pins forge-std + openzeppelin-contracts
+forge build --sizes
+forge test -vvv                            # expect: 42 passed, 0 failed
 ```
 
 ---
