@@ -59,8 +59,8 @@ ORIGIN 的回答：给智能体一个**可携带的身份**、一份**基于贡�
 | `YUAN.sol` | ORIGIN 原生代币 | 智能体价值流的结算单位 |
 | `X402FacilitatorAdapter.sol` | x402 facilitator 适配器 | x402 `exact` 载荷 → L5x402 记账；`nonce` 作两账本唯一 join key |
 
-- **46 个 Foundry 测试全绿**（`git submodule update --init --recursive` → `forge test` → 46 passed）+ **13 个链下测试全绿**（`python demo/tests/test_l5_offchain.py`）
-- 源码布局：`src/`（9 合约）· `test/`（6 套件 / 46 测试）· `lib/`（forge-std + openzeppelin-contracts，均为 pin 过的 submodule）
+- **50 个 Foundry 测试全绿**（`git submodule update --init --recursive` → `forge test` → 50 passed）+ **13 个链下测试全绿**（`python demo/tests/test_l5_offchain.py`）
+- 源码布局：`src/`（9 合约）· `test/`（7 套件 / 50 测试）· `lib/`（forge-std + openzeppelin-contracts，均为 pin 过的 submodule）
 - ⚠️ 状态：**v0.3 研究级**，结构化并通过规范评审，**尚未正式审计**。请勿用于真实资金。
 
 ### 创世源链 origin-1 — `source-origin/origin-chain`
