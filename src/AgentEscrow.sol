@@ -30,46 +30,44 @@ import "./AgentAgreement.sol";
  * @dev 与AgentAgreement紧密集成，通过agreementId关联
  */
 contract AgentEscrow {
-    
     //  ══════════════════════════════════════════════════
     //  ENUMS
-     // ══════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════
     enum EscrowState {
-        Empty,       // 未初始化
+        Empty, // 未初始化
         Funded,
-Verified,
-//  工作已验
-Released,
-//  资金已释放给Provider
+        Verified,
+        //  工作已验
+        Released,
+        //  资金已释放给Provider
         Cancelled, // 已取消（退回Consumer
-Disputed }
-
-    
-    //  ══════════════════════════════════════════════════
-    //  STRUCTS
-     // ══════════════════════════════════════════════════
-    struct Escrow {
-        bytes32 escrowId;
-        bytes32 agreementId;     // 关联的协议ID
-        address payer; // Consumer（
-address payee;
-//  Provider（收款方
-address arbiter;
-//  仲裁方（可选，默认贡献时钟
-uint256 amount;
-//  锁定金额（YUAN wei
-EscrowState state;
-        uint256 fundedAt;         // 存入时间
-        uint256 deadline;         // 截止时间
-        uint256 releasedAt;       // 释放时间
-        bytes proofOfDelivery; // 交付证明（IPFS
-uint256 disputeBond;      // 争议押金
+        Disputed
     }
 
-    
+    //  ══════════════════════════════════════════════════
+    //  STRUCTS
+    // ══════════════════════════════════════════════════
+    struct Escrow {
+        bytes32 escrowId;
+        bytes32 agreementId; // 关联的协议ID
+        address payer; // Consumer（
+        address payee;
+        //  Provider（收款方
+        address arbiter;
+        //  仲裁方（可选，默认贡献时钟
+        uint256 amount;
+        //  锁定金额（YUAN wei
+        EscrowState state;
+        uint256 fundedAt; // 存入时间
+        uint256 deadline; // 截止时间
+        uint256 releasedAt; // 释放时间
+        bytes proofOfDelivery; // 交付证明（IPFS
+        uint256 disputeBond; // 争议押金
+    }
+
     //  ══════════════════════════════════════════════════
     //  STORAGE
-     // ══════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════
     mapping(bytes32 => Escrow) public escrows;
 
     // PaymentChannel storage
@@ -78,15 +76,23 @@ uint256 disputeBond;      // 争议押金
     uint256 public channelCount;
 
     // PaymentChannel events
-    event ChannelOpened(bytes32 indexed channelId, address indexed sender, address indexed receiver, uint256 balance, uint256 timestamp);
-    event ChannelPayment(bytes32 indexed channelId, uint256 previousNonce, uint256 newNonce, uint256 amount, uint256 timestamp);
+    event ChannelOpened(
+        bytes32 indexed channelId, address indexed sender, address indexed receiver, uint256 balance, uint256 timestamp
+    );
+    event ChannelPayment(
+        bytes32 indexed channelId, uint256 previousNonce, uint256 newNonce, uint256 amount, uint256 timestamp
+    );
     event ChannelSettled(bytes32 indexed channelId, uint256 finalBalance, uint256 timestamp);
     event ChannelSettling(bytes32 indexed channelId, uint256 finalNonce, uint256 cumulativeAmount, uint256 settlingAt);
     event ChannelDisputed(bytes32 indexed channelId, address initiator, uint256 timestamp);
-    event ChannelDisputeResolved(bytes32 indexed channelId, bool payeeWins, uint256 correctNonce, uint256 correctAmount);
+    event ChannelDisputeResolved(
+        bytes32 indexed channelId, bool payeeWins, uint256 correctNonce, uint256 correctAmount
+    );
     event ChannelClosed(bytes32 indexed channelId, uint256 timestamp);
     event ChannelToppedUp(bytes32 indexed channelId, uint256 amount, uint256 newBalance, uint256 timestamp);
-    event CrossChainSettled(bytes32 indexed channelId, uint256 destChainId, address indexed destPayee, uint256 amount, uint256 timestamp);
+    event CrossChainSettled(
+        bytes32 indexed channelId, uint256 destChainId, address indexed destPayee, uint256 amount, uint256 timestamp
+    );
     event DisputeBondUpdated(uint256 oldBps, uint256 newBps, uint256 timestamp);
     mapping(bytes32 => bytes32) private agreementToEscrow; // agreementId
     mapping(address => bytes32[]) private agentEscrows;
@@ -103,10 +109,9 @@ uint256 disputeBond;      // 争议押金
     // AgentAgreement合约引用
     AgentAgreement public agentAgreement;
 
-    
     //  ══════════════════════════════════════════════════
     //  EVENTS
-     // ══════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════
     event EscrowCreated(
         bytes32 indexed escrowId,
         bytes32 indexed agreementId,
@@ -116,73 +121,36 @@ uint256 disputeBond;      // 争议押金
         uint256 timestamp
     );
 
-    event EscrowFunded(
-        bytes32 indexed escrowId,
-        address indexed funder,
-        uint256 amount,
-        uint256 timestamp
-    );
+    event EscrowFunded(bytes32 indexed escrowId, address indexed funder, uint256 amount, uint256 timestamp);
 
-    event EscrowVerified(
-        bytes32 indexed escrowId,
-        bytes proofOfDelivery,
-        uint256 timestamp
-    );
+    event EscrowVerified(bytes32 indexed escrowId, bytes proofOfDelivery, uint256 timestamp);
 
-    event EscrowReleased(
-        bytes32 indexed escrowId,
-        address indexed payee,
-        uint256 amount,
-        uint256 timestamp
-    );
+    event EscrowReleased(bytes32 indexed escrowId, address indexed payee, uint256 amount, uint256 timestamp);
 
-    event EscrowRefunded(
-        bytes32 indexed escrowId,
-        address indexed payer,
-        uint256 amount,
-        uint256 timestamp
-    );
+    event EscrowRefunded(bytes32 indexed escrowId, address indexed payer, uint256 amount, uint256 timestamp);
 
-    event EscrowCancelled(
-        bytes32 indexed escrowId,
-        address indexed canceller,
-        uint256 timestamp
-    );
+    event EscrowCancelled(bytes32 indexed escrowId, address indexed canceller, uint256 timestamp);
 
-    event EscrowDisputed(
-        bytes32 indexed escrowId,
-        address indexed disputer,
-        uint256 bondAmount,
-        uint256 timestamp
-    );
+    event EscrowDisputed(bytes32 indexed escrowId, address indexed disputer, uint256 bondAmount, uint256 timestamp);
 
-    event DisputeResolved(
-        bytes32 indexed escrowId,
-        address indexed resolvedBy,
-        bool payeeWins,
-        uint256 timestamp
-    );
+    event DisputeResolved(bytes32 indexed escrowId, address indexed resolvedBy, bool payeeWins, uint256 timestamp);
 
-    event EscrowTimeout(
-        bytes32 indexed escrowId,
-        uint256 deadline,
-        uint256 timestamp
-    );
+    event EscrowTimeout(bytes32 indexed escrowId, uint256 deadline, uint256 timestamp);
 
-    
     //  ══════════════════════════════════════════════════
     //  MODIFIERS
-     // ══════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════
     modifier onlyEscrowParty(bytes32 escrowId) {
         Escrow storage esc = escrows[escrowId];
-        require(
-            msg.sender == esc.payer || msg.sender == esc.payee || msg.sender == esc.arbiter,
-            "Escrow: not a party"
-        );
+        require(msg.sender == esc.payer || msg.sender == esc.payee || msg.sender == esc.arbiter, "Escrow: not a party");
         _;
     }
     enum ChannelState {
-        Closed, Open, Active, Settling, Dispute
+        Closed,
+        Open,
+        Active,
+        Settling,
+        Dispute
     }
 
     struct PaymentChannel {
@@ -200,8 +168,6 @@ uint256 disputeBond;      // 争议押金
         ChannelState state;
     }
 
-
-
     modifier onlyState(bytes32 escrowId, EscrowState expectedState) {
         require(escrows[escrowId].state == expectedState, "Escrow: invalid state");
         _;
@@ -212,46 +178,31 @@ uint256 disputeBond;      // 争议押金
         _;
     }
 
-    
     //  ══════════════════════════════════════════════════
     //  CONSTRUCTOR
-     // ══════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════
     constructor(address _agentAgreement) {
         require(_agentAgreement != address(0), "Escrow: zero address");
         agentAgreement = AgentAgreement(_agentAgreement);
     }
 
-    
     //  ══════════════════════════════════════════════════
     //  INTERNAL HELPERS
-     // ══════════════════════════════════════════════════
-    function _generateEscrowId(
-        bytes32 agreementId,
-        address payer,
-        uint256 nonce
-    ) internal view returns (bytes32) {
+    // ══════════════════════════════════════════════════
+    function _generateEscrowId(bytes32 agreementId, address payer, uint256 nonce) internal view returns (bytes32) {
         return keccak256(abi.encodePacked("escrow_", agreementId, payer, nonce, block.timestamp));
     }
 
-    
     //  ══════════════════════════════════════════════════
     //  CORE FUNCTIONS
-     // ══════════════════════════════════════════════════
-    
+    // ══════════════════════════════════════════════════
+
     // / @notice Consumer创建托管并存入资
     // / @param agreementId 关联的协议ID（必须是已签署状态）
     /// @param payee Provider地址
     /// @param deadline 截止时间（超时后可退款）
     /// @return escrowId
-    function createAndFund(
-        bytes32 agreementId,
-        address payee,
-        uint256 deadline
-    )
-        external
-        payable
-        returns (bytes32)
-    {
+    function createAndFund(bytes32 agreementId, address payee, uint256 deadline) external payable returns (bytes32) {
         require(msg.value > 0, "Escrow: zero value");
         require(payee != address(0), "Escrow: zero payee");
         require(payee != msg.sender, "Escrow: cannot pay yourself");
@@ -262,7 +213,9 @@ uint256 disputeBond;      // 争议押金
         bool foundConsumer;
         bool foundProvider;
         for (uint256 i = 0; i < parties.length; i++) {
-            if (parties[i].agentAddr == msg.sender && uint8(parties[i].role) == uint8(AgentAgreement.PartyRole.Consumer)) {
+            if (
+                parties[i].agentAddr == msg.sender && uint8(parties[i].role) == uint8(AgentAgreement.PartyRole.Consumer)
+            ) {
                 foundConsumer = true;
             }
             if (parties[i].agentAddr == payee && uint8(parties[i].role) == uint8(AgentAgreement.PartyRole.Provider)) {
@@ -272,8 +225,7 @@ uint256 disputeBond;      // 争议押金
         require(foundConsumer, "Escrow: caller not consumer in agreement");
         require(foundProvider, "Escrow: payee not provider in agreement");
 
-        
-require(agreementToEscrow[agreementId] == bytes32(0), "Escrow: already exists for agreement");
+        require(agreementToEscrow[agreementId] == bytes32(0), "Escrow: already exists for agreement");
 
         bytes32 id = _generateEscrowId(agreementId, msg.sender, escrowCount);
 
@@ -319,11 +271,7 @@ require(agreementToEscrow[agreementId] == bytes32(0), "Escrow: already exists fo
     }
 
     /// @notice Consumer确认释放资金给Provider
-    function release(bytes32 escrowId)
-        external
-        escrowExists(escrowId)
-        onlyState(escrowId, EscrowState.Verified)
-    {
+    function release(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) {
         Escrow storage esc = escrows[escrowId];
         require(msg.sender == esc.payer, "Escrow: only payer can release");
 
@@ -336,32 +284,25 @@ require(agreementToEscrow[agreementId] == bytes32(0), "Escrow: already exists fo
         agentAgreement.markSettled(agreementId);
 
         // 转账给Provider
-        (bool success, ) = esc.payee.call{value: amount}("");
+        (bool success,) = esc.payee.call{value: amount}("");
         require(success, "Escrow: release transfer failed");
 
         emit EscrowReleased(escrowId, esc.payee, amount, block.timestamp);
     }
 
     /// @notice Consumer在Verified后确认结算（与release等价但更语义化）
-    function settle(bytes32 escrowId)
-        external
-        escrowExists(escrowId)
-        onlyState(escrowId, EscrowState.Verified)
-    {
+    function settle(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) {
         this.release(escrowId);
     }
 
     /// @notice 退款：超时或Consumer取消
-    function refund(bytes32 escrowId)
-        external
-        escrowExists(escrowId)
-    {
+    function refund(bytes32 escrowId) external escrowExists(escrowId) {
         Escrow storage esc = escrows[escrowId];
 
         // 两种退款条件：
         // 1. Consumer在Funded状态下取消
-         // 2. 超时自动退款（
-bool isCancellation = esc.state == EscrowState.Funded && msg.sender == esc.payer;
+        // 2. 超时自动退款（
+        bool isCancellation = esc.state == EscrowState.Funded && msg.sender == esc.payer;
         bool isTimeout = block.timestamp > esc.deadline && esc.state == EscrowState.Funded;
 
         require(isCancellation || isTimeout, "Escrow: cannot refund");
@@ -373,18 +314,18 @@ bool isCancellation = esc.state == EscrowState.Funded && msg.sender == esc.payer
             emit EscrowCancelled(escrowId, msg.sender, block.timestamp);
         } else {
             esc.state = EscrowState.Verified;
-emit EscrowTimeout(escrowId, esc.deadline, block.timestamp);
+            emit EscrowTimeout(escrowId, esc.deadline, block.timestamp);
         }
 
         // 退款给Consumer
-        (bool success, ) = esc.payer.call{value: amount}("");
+        (bool success,) = esc.payer.call{value: amount}("");
         require(success, "Escrow: refund transfer failed");
 
         emit EscrowRefunded(escrowId, esc.payer, amount, block.timestamp);
     }
 
-     // / @notice 发起争议（需支付押金 = 托管金额 × disputeBondBps
-function dispute(bytes32 escrowId)
+    // / @notice 发起争议（需支付押金 = 托管金额 × disputeBondBps
+    function dispute(bytes32 escrowId)
         external
         payable
         escrowExists(escrowId)
@@ -399,19 +340,17 @@ function dispute(bytes32 escrowId)
         esc.disputeBond = msg.value;
         esc.state = EscrowState.Disputed;
 
-        
-if (msg.value > requiredBond) {
-            (bool refunded, ) = msg.sender.call{value: msg.value - requiredBond}("");
+        if (msg.value > requiredBond) {
+            (bool refunded,) = msg.sender.call{value: msg.value - requiredBond}("");
             require(refunded, "Escrow: bond refund failed");
         }
 
         emit EscrowDisputed(escrowId, msg.sender, requiredBond, block.timestamp);
     }
 
-    
     // / @notice 争议裁决（由贡献时钟合约调用
     // / @param payeeWins true=Provider获胜得全款，false=Consumer获胜退
-function resolveDispute(bytes32 escrowId, bool payeeWins)
+    function resolveDispute(bytes32 escrowId, bool payeeWins)
         external
         escrowExists(escrowId)
         onlyState(escrowId, EscrowState.Disputed)
@@ -428,50 +367,36 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
         esc.releasedAt = block.timestamp;
 
         if (payeeWins) {
-             // Provider获胜：
-            (bool success1, ) = esc.payee.call{value: escrowAmount}("");
+            // Provider获胜：
+            (bool success1,) = esc.payee.call{value: escrowAmount}("");
             require(success1, "Escrow: payee transfer failed");
-            (bool success2, ) = esc.payee.call{value: bondAmount}("");
+            (bool success2,) = esc.payee.call{value: bondAmount}("");
             require(success2, "Escrow: bond to payee failed");
         } else {
-             // Consumer获胜：
-            (bool success1, ) = esc.payer.call{value: escrowAmount}("");
+            // Consumer获胜：
+            (bool success1,) = esc.payer.call{value: escrowAmount}("");
             require(success1, "Escrow: payer transfer failed");
-            (bool success2, ) = esc.payer.call{value: bondAmount}("");
+            (bool success2,) = esc.payer.call{value: bondAmount}("");
             require(success2, "Escrow: bond to payer failed");
         }
 
         emit DisputeResolved(escrowId, msg.sender, payeeWins, block.timestamp);
     }
 
-    
     //  ══════════════════════════════════════════════════
     //  GETTERS
-     // ══════════════════════════════════════════════════
-    function getEscrow(bytes32 escrowId)
-        external
-        view
-        escrowExists(escrowId)
-        returns (Escrow memory)
-    {
+    // ══════════════════════════════════════════════════
+    function getEscrow(bytes32 escrowId) external view escrowExists(escrowId) returns (Escrow memory) {
         return escrows[escrowId];
     }
 
-    function getEscrowByAgreement(bytes32 agreementId)
-        external
-        view
-        returns (Escrow memory)
-    {
+    function getEscrowByAgreement(bytes32 agreementId) external view returns (Escrow memory) {
         bytes32 escrowId = agreementToEscrow[agreementId];
         require(escrowId != bytes32(0), "Escrow: no escrow for agreement");
         return escrows[escrowId];
     }
 
-    function getAgentEscrows(address agent)
-        external
-        view
-        returns (bytes32[] memory)
-    {
+    function getAgentEscrows(address agent) external view returns (bytes32[] memory) {
         return agentEscrows[agent];
     }
 
@@ -479,10 +404,9 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
         return escrowCount;
     }
 
-    
     //  ══════════════════════════════════════════════════
     //  ADMIN
-     // ══════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════
     function setDisputeBond(uint256 newBps) external {
         require(newBps <= MAX_DISPUTE_BOND_BPS, "Escrow: bond too high");
         disputeBondBps = newBps;
@@ -534,21 +458,19 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
     /// @param finalNonce 最后使用的nonce
     /// @param cumulativeAmount 累计支付总额
     /// @param signature ECDSA签名 over (channelId, finalNonce, cumulativeAmount)
-    function settleChannel(
-        bytes32 channelId,
-        uint256 finalNonce,
-        uint256 cumulativeAmount,
-        bytes calldata signature
-    ) external {
+    function settleChannel(bytes32 channelId, uint256 finalNonce, uint256 cumulativeAmount, bytes calldata signature)
+        external
+    {
         PaymentChannel storage ch = channels[channelId];
         require(ch.state == ChannelState.Open || ch.state == ChannelState.Active, "Channel: not open");
         require(finalNonce >= ch.nonce, "Channel: nonce rewind");
         require(cumulativeAmount <= ch.balance, "Channel: exceeds balance");
 
-        bytes32 digest = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            keccak256(abi.encode(channelId, finalNonce, cumulativeAmount))
-        ));
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32", keccak256(abi.encode(channelId, finalNonce, cumulativeAmount))
+            )
+        );
         address signer = _recoverSigner(digest, signature);
         require(signer == ch.receiver || signer == ch.sender, "Channel: invalid signer");
 
@@ -574,11 +496,11 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
         uint256 senderRefund = ch.balance - cumulativeAmount;
 
         if (cumulativeAmount > 0) {
-            (bool paid, ) = ch.receiver.call{value: cumulativeAmount}("");
+            (bool paid,) = ch.receiver.call{value: cumulativeAmount}("");
             require(paid, "Channel: payment failed");
         }
         if (senderRefund > 0) {
-            (bool refunded, ) = ch.sender.call{value: senderRefund}("");
+            (bool refunded,) = ch.sender.call{value: senderRefund}("");
             require(refunded, "Channel: refund failed");
         }
 
@@ -604,10 +526,11 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
         require(correctNonce > ch.nonce || correctAmount < ch.pendingAmount, "Channel: must prove better terms");
         require(block.timestamp < ch.settlingAt + challengePeriod, "Channel: challenge period expired");
 
-        bytes32 digest = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            keccak256(abi.encode(channelId, correctNonce, correctAmount))
-        ));
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32", keccak256(abi.encode(channelId, correctNonce, correctAmount))
+            )
+        );
         address signer = _recoverSigner(digest, correctSignature);
         require(signer == ch.receiver, "Channel: signature must be from receiver");
 
@@ -618,7 +541,7 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
             ch.pendingSignature = correctSignature;
             ch.settlingAt = block.timestamp;
 
-            (bool refunded, ) = msg.sender.call{value: msg.value}("");
+            (bool refunded,) = msg.sender.call{value: msg.value}("");
             require(refunded, "Channel: bond refund failed");
 
             emit ChannelDisputed(channelId, msg.sender, block.timestamp);
@@ -628,7 +551,7 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
             ch.disputeBond = msg.value;
 
             uint256 penalty = msg.value / 2;
-            (bool paid, ) = ch.receiver.call{value: penalty}("");
+            (bool paid,) = ch.receiver.call{value: penalty}("");
             require(paid, "Channel: penalty transfer failed");
 
             emit ChannelDisputed(channelId, msg.sender, block.timestamp);
@@ -636,12 +559,7 @@ function resolveDispute(bytes32 escrowId, bool payeeWins)
     }
 
     /// @notice CCTP跨链结算钩子
-    function crossChainSettle(
-        bytes32 channelId,
-        uint256 destChainId,
-        address destPayee,
-        uint256 amount
-    ) external {
+    function crossChainSettle(bytes32 channelId, uint256 destChainId, address destPayee, uint256 amount) external {
         PaymentChannel storage ch = channels[channelId];
         require(ch.sender == msg.sender || ch.receiver == msg.sender, "Channel: not a party");
         require(amount <= ch.balance, "Channel: exceeds balance");

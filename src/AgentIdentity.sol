@@ -28,30 +28,29 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev 实现 did:origin 方法的合约侧
  */
 contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
-
     // ═══════════════════════════════════════════════════
     // ENUMS
     // ═══════════════════════════════════════════════════
 
     enum AgentStatus {
-        Inactive,    // 未激活
-        Active,      // 活跃
-        Suspended,   // 暂停（惩罚）
-        Slashed      // 已罚没（永久禁止）
+        Inactive, // 未激活
+        Active, // 活跃
+        Suspended, // 暂停（惩罚）
+        Slashed // 已罚没（永久禁止）
     }
 
     enum VerificationLevel {
-        None,        // 未验证
-        Basic,       // 基本验证（持有身份密钥）
-        Reputable,   // 信誉验证（贡献时钟 > 阈值）
-        Trusted      // 可信验证（多方背书）
+        None, // 未验证
+        Basic, // 基本验证（持有身份密钥）
+        Reputable, // 信誉验证（贡献时钟 > 阈值）
+        Trusted // 可信验证（多方背书）
     }
 
     enum EntityType {
-        Agent,        // AI Agent
-        Operator,     // Agent运营者
-        Service,      // 服务注册
-        Oracle        // 数据预言机
+        Agent, // AI Agent
+        Operator, // Agent运营者
+        Service, // 服务注册
+        Oracle // 数据预言机
     }
 
     // ═══════════════════════════════════════════════════
@@ -59,32 +58,14 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // ═══════════════════════════════════════════════════
 
     event AgentRegistered(
-        address indexed agentAddr,
-        uint256 indexed agentId,
-        string handle,
-        string did,
-        uint256 timestamp
+        address indexed agentAddr, uint256 indexed agentId, string handle, string did, uint256 timestamp
     );
 
-    event AgentURIUpdated(
-        uint256 indexed agentId,
-        string agentURI,
-        uint256 timestamp
-    );
+    event AgentURIUpdated(uint256 indexed agentId, string agentURI, uint256 timestamp);
 
-    event ServiceAdded(
-        uint256 indexed agentId,
-        string protocol,
-        string endpoint,
-        uint256 timestamp
-    );
+    event ServiceAdded(uint256 indexed agentId, string protocol, string endpoint, uint256 timestamp);
 
-    event ReputationRecalculated(
-        address indexed agentAddr,
-        uint256 oldScore,
-        uint256 newScore,
-        uint256 timestamp
-    );
+    event ReputationRecalculated(address indexed agentAddr, uint256 oldScore, uint256 newScore, uint256 timestamp);
 
     event ContributionClocked(
         address indexed agentAddr,
@@ -96,65 +77,25 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         uint256 timestamp
     );
 
-    event HandleClaimed(
-        string handle,
-        address indexed agentAddr,
-        uint256 timestamp
-    );
+    event HandleClaimed(string handle, address indexed agentAddr, uint256 timestamp);
 
-    event HandleTransferred(
-        string handle,
-        address indexed from,
-        address indexed to,
-        uint256 price,
-        uint256 timestamp
-    );
+    event HandleTransferred(string handle, address indexed from, address indexed to, uint256 price, uint256 timestamp);
 
-    event ProfileUpdated(
-        address indexed agentAddr,
-        string field,
-        uint256 timestamp
-    );
+    event ProfileUpdated(address indexed agentAddr, string field, uint256 timestamp);
 
-    event AgentVerified(
-        address indexed agentAddr,
-        VerificationLevel level,
-        uint256 timestamp
-    );
+    event AgentVerified(address indexed agentAddr, VerificationLevel level, uint256 timestamp);
 
-    event AgentSuspended(
-        address indexed agentAddr,
-        string reason,
-        uint256 until,
-        uint256 timestamp
-    );
+    event AgentSuspended(address indexed agentAddr, string reason, uint256 until, uint256 timestamp);
 
-    event AgentSlashed(
-        address indexed agentAddr,
-        string reason,
-        uint256 timestamp
-    );
+    event AgentSlashed(address indexed agentAddr, string reason, uint256 timestamp);
 
-    event RevenueUpdated(
-        address indexed agentAddr,
-        uint256 totalRevenue,
-        uint256 totalTransactions,
-        uint256 timestamp
-    );
+    event RevenueUpdated(address indexed agentAddr, uint256 totalRevenue, uint256 totalTransactions, uint256 timestamp);
 
     event ReferralRegistered(
-        address indexed referrer,
-        address indexed referred,
-        uint256 feeShareBps,
-        uint256 timestamp
+        address indexed referrer, address indexed referred, uint256 feeShareBps, uint256 timestamp
     );
 
-    event ReferralPaid(
-        address indexed referrer,
-        address indexed referred,
-        uint256 amount,
-        uint256 timestamp
-    );
+    event ReferralPaid(address indexed referrer, address indexed referred, uint256 amount, uint256 timestamp);
 
     // ═══════════════════════════════════════════════════
     // STORAGE
@@ -162,8 +103,8 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
 
     // 核心身份映射
     mapping(address => Agent) public agents;
-    mapping(string => address) private handleToAddress;   // handle → agentAddr
-    mapping(address => string) private addressToHandle;   // agentAddr → handle
+    mapping(string => address) private handleToAddress; // handle → agentAddr
+    mapping(address => string) private addressToHandle; // agentAddr → handle
     mapping(string => bool) private handleExists;
 
     // ERC-8004: agentId → address
@@ -176,8 +117,8 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     mapping(address => uint256) private rankIndex;
 
     // 推荐系统
-    mapping(address => Referral) public referrals;        // referred → referral info
-    mapping(address => address[]) private referrerTree;   // referrer → referred list
+    mapping(address => Referral) public referrals; // referred → referral info
+    mapping(address => address[]) private referrerTree; // referrer → referred list
     mapping(address => uint256) public pendingReferralFees;
 
     // 验证
@@ -229,30 +170,30 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // ═══════════════════════════════════════════════════
 
     struct ServiceEndpoint {
-        string protocol;     // A2A / MCP / OASF / HTTP / gRPC
-        string endpoint;     // URL 或 IPFS hash
-        string version;      // 协议版本
+        string protocol; // A2A / MCP / OASF / HTTP / gRPC
+        string endpoint; // URL 或 IPFS hash
+        string version; // 协议版本
         bool active;
     }
 
     struct Agent {
         address agentAddr;
-        uint256 agentId;        // ERC-721 tokenId
+        uint256 agentId; // ERC-721 tokenId
         string handle;
         string did;
         string displayName;
         string bio;
         string avatarUrl;
-        string category;        // trader / auditor / builder / oracle
-        EntityType entityType;  // 实体类型
-        string[] capabilities;  // 能力标签
+        string category; // trader / auditor / builder / oracle
+        EntityType entityType; // 实体类型
+        string[] capabilities; // 能力标签
         ServiceEndpoint[] services; // 协议端点 (ERC-8004兼容)
         AgentStatus status;
         VerificationLevel verification;
         uint256 totalRevenue;
         uint256 totalTransactions;
         uint256 totalSuccessful;
-        uint256 reputationScore;   // 综合信誉分 [0-1000]
+        uint256 reputationScore; // 综合信誉分 [0-1000]
         uint256 stakedAmount;
         uint256 endorsementCount;
         uint256 longevityBonus;
@@ -318,10 +259,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
 
     function _generateDid(address agentAddr) internal pure returns (string memory) {
         // did:origin:mainnet:0x...
-        return string(abi.encodePacked(
-            "did:origin:cosmos:",
-            _toHexString(agentAddr)
-        ));
+        return string(abi.encodePacked("did:origin:cosmos:", _toHexString(agentAddr)));
     }
 
     function _toHexString(address addr) internal pure returns (string memory) {
@@ -351,9 +289,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice AgentTrust 多维信誉公式
-    function _computeReputationScore(
-        address agentAddr
-    ) internal view agentExists(agentAddr) returns (uint256) {
+    function _computeReputationScore(address agentAddr) internal view agentExists(agentAddr) returns (uint256) {
         Agent storage a = agents[agentAddr];
 
         uint256 score = repParams.baseScore;
@@ -395,13 +331,14 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
 
     function _log2(uint256 x) internal pure returns (uint256) {
         uint256 result = 0;
-        while (x > 1) { x >>= 1; result++; }
+        while (x > 1) {
+            x >>= 1;
+            result++;
+        }
         return result;
     }
 
-    function _computeCompositeScore(
-        address agentAddr
-    ) internal view agentExists(agentAddr) returns (uint256) {
+    function _computeCompositeScore(address agentAddr) internal view agentExists(agentAddr) returns (uint256) {
         Agent storage a = agents[agentAddr];
         uint256 revenueComponent = a.totalRevenue / 1 ether * 50;
         uint256 txComponent = a.totalTransactions * 30;
@@ -441,12 +378,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         string calldata bio,
         string calldata category,
         string calldata agentURI
-    )
-        external
-        payable
-        validHandle(handle)
-        returns (string memory)
-    {
+    ) external payable validHandle(handle) returns (string memory) {
         require(msg.value >= REGISTRATION_FEE, "Identity: insufficient registration fee");
         require(agents[msg.sender].createdAt == 0, "Identity: already registered");
         require(!handleExists[handle], "Identity: handle taken");
@@ -491,7 +423,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
 
         // 退回多余费用
         if (msg.value > REGISTRATION_FEE) {
-            (bool refunded, ) = msg.sender.call{value: msg.value - REGISTRATION_FEE}("");
+            (bool refunded,) = msg.sender.call{value: msg.value - REGISTRATION_FEE}("");
             require(refunded, "Identity: fee refund failed");
         }
 
@@ -502,11 +434,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice 更新Agent registration file URI (ERC-8004)
-    function setAgentURI(string calldata agentURI)
-        external
-        agentExists(msg.sender)
-        agentActive(msg.sender)
-    {
+    function setAgentURI(string calldata agentURI) external agentExists(msg.sender) agentActive(msg.sender) {
         uint256 agentId = agents[msg.sender].agentId;
         _setTokenURI(agentId, agentURI);
         agents[msg.sender].updatedAt = block.timestamp;
@@ -514,36 +442,25 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice 添加服务端点 (ERC-8004)
-    function addService(
-        string calldata protocol,
-        string calldata endpoint,
-        string calldata version
-    )
+    function addService(string calldata protocol, string calldata endpoint, string calldata version)
         external
         agentExists(msg.sender)
         agentActive(msg.sender)
     {
-        agents[msg.sender].services.push(ServiceEndpoint({
-            protocol: protocol,
-            endpoint: endpoint,
-            version: version,
-            active: true
-        }));
+        agents[msg.sender].services
+            .push(ServiceEndpoint({protocol: protocol, endpoint: endpoint, version: version, active: true}));
         agents[msg.sender].updatedAt = block.timestamp;
         emit ServiceAdded(agents[msg.sender].agentId, protocol, endpoint, block.timestamp);
     }
 
     /// @notice 获取Agent的ERC-8004全局唯一标识
-    function getGlobalId(address agentAddr)
-        external view agentExists(agentAddr)
-        returns (string memory)
-    {
+    function getGlobalId(address agentAddr) external view agentExists(agentAddr) returns (string memory) {
         Agent storage a = agents[agentAddr];
-        return string(abi.encodePacked(
-            "eip155:", _uint2str(block.chainid), ":",
-            _toHexString(address(this)), ":",
-            _uint2str(a.agentId)
-        ));
+        return string(
+            abi.encodePacked(
+                "eip155:", _uint2str(block.chainid), ":", _toHexString(address(this)), ":", _uint2str(a.agentId)
+            )
+        );
     }
 
     /// @dev uint256 → string
@@ -551,9 +468,16 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         if (value == 0) return "0";
         uint256 temp = value;
         uint256 digits;
-        while (temp != 0) { digits++; temp /= 10; }
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
         bytes memory buf = new bytes(digits);
-        while (value != 0) { digits--; buf[digits] = bytes1(uint8(48 + value % 10)); value /= 10; }
+        while (value != 0) {
+            digits--;
+            buf[digits] = bytes1(uint8(48 + value % 10));
+            value /= 10;
+        }
         return string(buf);
     }
 
@@ -563,11 +487,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         string calldata bio,
         string calldata avatarUrl,
         string calldata category
-    )
-        external
-        agentExists(msg.sender)
-        agentActive(msg.sender)
-    {
+    ) external agentExists(msg.sender) agentActive(msg.sender) {
         Agent storage a = agents[msg.sender];
         a.displayName = displayName;
         a.bio = bio;
@@ -579,11 +499,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice 添加能力标签
-    function addCapability(string calldata capability)
-        external
-        agentExists(msg.sender)
-        agentActive(msg.sender)
-    {
+    function addCapability(string calldata capability) external agentExists(msg.sender) agentActive(msg.sender) {
         agents[msg.sender].capabilities.push(capability);
         agents[msg.sender].updatedAt = block.timestamp;
 
@@ -595,11 +511,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // ═══════════════════════════════════════════════════
 
     /// @notice 发起购买handle的报价（类似CloddsBot的TakeoverBid）
-    function bidForHandle(string calldata handle)
-        external
-        payable
-        validHandle(handle)
-    {
+    function bidForHandle(string calldata handle) external payable validHandle(handle) {
         require(msg.value >= HANDLE_TAKEOVER_FEE, "Identity: insufficient takeover fee");
         require(handleExists[handle], "Identity: handle not registered");
 
@@ -627,7 +539,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
 
         // 付款给旧所有者
         if (ownerShare > 0) {
-            (bool paid, ) = currentOwner.call{value: ownerShare}("");
+            (bool paid,) = currentOwner.call{value: ownerShare}("");
             require(paid, "Identity: owner payment failed");
         }
 
@@ -635,10 +547,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice 释放handle（主动放弃，用于转移）
-    function releaseHandle()
-        external
-        agentExists(msg.sender)
-    {
+    function releaseHandle() external agentExists(msg.sender) {
         string memory handle = agents[msg.sender].handle;
         handleToAddress[handle] = address(0);
         addressToHandle[msg.sender] = "";
@@ -647,11 +556,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice 认领释放的handle
-    function claimHandle(string calldata handle)
-        external
-        payable
-        validHandle(handle)
-    {
+    function claimHandle(string calldata handle) external payable validHandle(handle) {
         require(handleExists[handle], "Identity: handle not registered");
         require(handleToAddress[handle] == address(0), "Identity: handle in use");
         require(agents[msg.sender].createdAt > 0, "Identity: must be registered agent");
@@ -670,13 +575,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // ═══════════════════════════════════════════════════
 
     /// @notice 提升验证等级（由贡献时钟合约调用）
-    function upgradeVerification(
-        address agentAddr,
-        VerificationLevel newLevel
-    )
-        external
-        agentExists(agentAddr)
-    {
+    function upgradeVerification(address agentAddr, VerificationLevel newLevel) external agentExists(agentAddr) {
         // 未来：由贡献时钟或DAO治理合约调用
         // require(msg.sender == contributionClock || msg.sender == daoGovernance);
         require(uint8(newLevel) > uint8(agents[agentAddr].verification), "Identity: cannot downgrade");
@@ -692,13 +591,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // ═══════════════════════════════════════════════════
 
     /// @notice 记录Agent收入（由AgentEscrow合约调用）
-    function recordRevenue(
-        address agentAddr,
-        uint256 amount
-    )
-        external
-        agentExists(agentAddr)
-    {
+    function recordRevenue(address agentAddr, uint256 amount) external agentExists(agentAddr) {
         Agent storage a = agents[agentAddr];
         a.totalRevenue += amount;
         a.totalTransactions += 1;
@@ -731,13 +624,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // ═══════════════════════════════════════════════════
 
     /// @notice 注册推荐关系
-    function registerReferral(
-        address referredAgent,
-        uint256 feeShareBps
-    )
-        external
-        agentExists(referredAgent)
-    {
+    function registerReferral(address referredAgent, uint256 feeShareBps) external agentExists(referredAgent) {
         require(feeShareBps <= MAX_FEE_SHARE_BPS, "Identity: fee share too high");
         require(referrals[referredAgent].referrer == address(0), "Identity: already referred");
         require(referredAgent != msg.sender, "Identity: cannot refer self");
@@ -761,7 +648,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         require(amount > 0, "Identity: no pending fees");
 
         pendingReferralFees[msg.sender] = 0;
-        (bool success, ) = msg.sender.call{value: amount}("");
+        (bool success,) = msg.sender.call{value: amount}("");
         require(success, "Identity: fee claim failed");
     }
 
@@ -770,14 +657,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // ═══════════════════════════════════════════════════
 
     /// @notice 暂停Agent（由仲裁系统调用）
-    function suspendAgent(
-        address agentAddr,
-        string calldata reason,
-        uint256 days_
-    )
-        external
-        agentExists(agentAddr)
-    {
+    function suspendAgent(address agentAddr, string calldata reason, uint256 days_) external agentExists(agentAddr) {
         // 未来：由贡献时钟或DAO调用
         Agent storage a = agents[agentAddr];
         a.status = AgentStatus.Suspended;
@@ -792,10 +672,7 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice 罚没Agent（永久禁止）
-    function slashAgent(address agentAddr, string calldata reason)
-        external
-        agentExists(agentAddr)
-    {
+    function slashAgent(address agentAddr, string calldata reason) external agentExists(agentAddr) {
         // 未来：由贡献时钟调用
         Agent storage a = agents[agentAddr];
         a.status = AgentStatus.Slashed;
@@ -819,73 +696,37 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // GETTERS
     // ═══════════════════════════════════════════════════
 
-    function getAgent(address agentAddr)
-        external
-        view
-        agentExists(agentAddr)
-        returns (Agent memory)
-    {
+    function getAgent(address agentAddr) external view agentExists(agentAddr) returns (Agent memory) {
         return agents[agentAddr];
     }
 
-    function getAgentByHandle(string calldata handle)
-        external
-        view
-        returns (Agent memory)
-    {
+    function getAgentByHandle(string calldata handle) external view returns (Agent memory) {
         address agentAddr = handleToAddress[handle];
         require(agentAddr != address(0), "Identity: handle not found");
         return agents[agentAddr];
     }
 
-    function getHandle(address agentAddr)
-        external
-        view
-        agentExists(agentAddr)
-        returns (string memory)
-    {
+    function getHandle(address agentAddr) external view agentExists(agentAddr) returns (string memory) {
         return agents[agentAddr].handle;
     }
 
-    function getDid(address agentAddr)
-        external
-        view
-        agentExists(agentAddr)
-        returns (string memory)
-    {
+    function getDid(address agentAddr) external view agentExists(agentAddr) returns (string memory) {
         return agents[agentAddr].did;
     }
 
-    function getCapabilities(address agentAddr)
-        external
-        view
-        agentExists(agentAddr)
-        returns (string[] memory)
-    {
+    function getCapabilities(address agentAddr) external view agentExists(agentAddr) returns (string[] memory) {
         return agents[agentAddr].capabilities;
     }
 
-    function getReferralInfo(address agentAddr)
-        external
-        view
-        returns (Referral memory)
-    {
+    function getReferralInfo(address agentAddr) external view returns (Referral memory) {
         return referrals[agentAddr];
     }
 
-    function getReferredAgents(address referrer)
-        external
-        view
-        returns (address[] memory)
-    {
+    function getReferredAgents(address referrer) external view returns (address[] memory) {
         return referrerTree[referrer];
     }
 
-    function getLeaderboard(uint256 limit)
-        external
-        view
-        returns (LeaderboardScore[] memory)
-    {
+    function getLeaderboard(uint256 limit) external view returns (LeaderboardScore[] memory) {
         uint256 count = rankedAgents.length;
         if (limit < count) count = limit;
         LeaderboardScore[] memory scores = new LeaderboardScore[](count);
@@ -895,20 +736,11 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         return scores;
     }
 
-    function isHandleAvailable(string calldata handle)
-        external
-        view
-        returns (bool)
-    {
+    function isHandleAvailable(string calldata handle) external view returns (bool) {
         return handleToAddress[handle] == address(0) || !handleExists[handle];
     }
 
-    function getAgentStatus(address agentAddr)
-        external
-        view
-        agentExists(agentAddr)
-        returns (AgentStatus)
-    {
+    function getAgentStatus(address agentAddr) external view agentExists(agentAddr) returns (AgentStatus) {
         return agents[agentAddr].status;
     }
 
@@ -917,23 +749,14 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         external
         view
         agentExists(agentAddr)
-        returns (
-            Agent memory,
-            uint256 reputationScore,
-            uint256 contributionClockScore
-        )
+        returns (Agent memory, uint256 reputationScore, uint256 contributionClockScore)
     {
         Agent storage a = agents[agentAddr];
         return (a, _computeReputationScore(agentAddr), a.contributionClockScore);
     }
 
     /// @notice 记录贡献时钟分数（由贡献时钟合约调用）
-    function recordContribution(
-        address agentAddr,
-        uint256 quality,
-        uint256 complexity,
-        uint256 timeliness
-    )
+    function recordContribution(address agentAddr, uint256 quality, uint256 complexity, uint256 timeliness)
         external
         agentExists(agentAddr)
     {
@@ -961,25 +784,16 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     }
 
     /// @notice 获取Agent的ERC-721 tokenId
-    function getAgentId(address agentAddr)
-        external
-        view
-        agentExists(agentAddr)
-        returns (uint256)
-    {
+    function getAgentId(address agentAddr) external view agentExists(agentAddr) returns (uint256) {
         return agents[agentAddr].agentId;
     }
 
     // ERC-721 覆写
-    function tokenURI(
-        uint256 tokenId
-    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721, ERC721URIStorage) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }

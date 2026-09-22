@@ -56,11 +56,11 @@ contract L5Delegation is Ownable, ReentrancyGuard {
     // ═══════════════════════════════════════════════════
 
     enum DelegationStatus {
-        Active,      // 委托有效
-        Revoked,     // 已撤销（人类/委托方撤销）
-        Expired,     // 已过期（validUntil 到）
-        Exhausted,   // 额度耗尽（周期或总上限用完）
-        Suspended    // 因委托方/被委托方被 slash 暂停
+        Active, // 委托有效
+        Revoked, // 已撤销（人类/委托方撤销）
+        Expired, // 已过期（validUntil 到）
+        Exhausted, // 额度耗尽（周期或总上限用完）
+        Suspended // 因委托方/被委托方被 slash 暂停
     }
 
     // ═══════════════════════════════════════════════════
@@ -69,22 +69,22 @@ contract L5Delegation is Ownable, ReentrancyGuard {
 
     /// @notice 委托策略（对齐 internet-court AgentSpendPolicy）
     struct Delegation {
-        bytes32 id;              // 委托唯一 ID
-        address delegator;       // 委托方（能力提供方/授权人）
-        address delegate;        // 被委托方（调用智能体）
-        address token;           // 结算代币（YUAN）
-        address allowedPayTo;    // 限定收款方（=能力方，防转付）
-        string resourcePattern;  // 允许的资源/能力标识（武器库模块）
-        uint256 maxPerRequest;   // 单次调用上限
-        uint256 maxPerPeriod;    // 周期上限
-        uint256 period;          // 周期（秒）
-        uint256 validAfter;      // 生效时刻
-        uint256 validUntil;      // 过期时刻
-        bool revocable;          // 是否可撤销（true=人类权威可撤销）
-        uint256 periodStart;     // 当前周期起点
+        bytes32 id; // 委托唯一 ID
+        address delegator; // 委托方（能力提供方/授权人）
+        address delegate; // 被委托方（调用智能体）
+        address token; // 结算代币（YUAN）
+        address allowedPayTo; // 限定收款方（=能力方，防转付）
+        string resourcePattern; // 允许的资源/能力标识（武器库模块）
+        uint256 maxPerRequest; // 单次调用上限
+        uint256 maxPerPeriod; // 周期上限
+        uint256 period; // 周期（秒）
+        uint256 validAfter; // 生效时刻
+        uint256 validUntil; // 过期时刻
+        bool revocable; // 是否可撤销（true=人类权威可撤销）
+        uint256 periodStart; // 当前周期起点
         uint256 spentThisPeriod; // 当前周期已花费
-        uint256 totalSpent;      // 累计花费
-        uint256 requestCount;    // 调用次数
+        uint256 totalSpent; // 累计花费
+        uint256 requestCount; // 调用次数
         DelegationStatus status; // 状态
     }
 
@@ -129,23 +129,11 @@ contract L5Delegation is Ownable, ReentrancyGuard {
         uint256 totalSpent
     );
 
-    event DelegationRevoked(
-        bytes32 indexed id,
-        address indexed revokedBy,
-        string reason
-    );
+    event DelegationRevoked(bytes32 indexed id, address indexed revokedBy, string reason);
 
-    event DelegationSuspended(
-        bytes32 indexed id,
-        address indexed by,
-        string reason
-    );
+    event DelegationSuspended(bytes32 indexed id, address indexed by, string reason);
 
-    event DelegationPeriodRolled(
-        bytes32 indexed id,
-        uint256 newPeriodStart,
-        uint256 newPeriodBudget
-    );
+    event DelegationPeriodRolled(bytes32 indexed id, uint256 newPeriodStart, uint256 newPeriodBudget);
 
     // ═══════════════════════════════════════════════════
     // MODIFIERS
@@ -223,7 +211,7 @@ contract L5Delegation is Ownable, ReentrancyGuard {
             period: _period,
             validAfter: now_,
             validUntil: now_ + _validFor,
-            revocable: true,                 // 默认可撤销（宪法第0条）
+            revocable: true, // 默认可撤销（宪法第0条）
             periodStart: now_,
             spentThisPeriod: 0,
             totalSpent: 0,
@@ -235,9 +223,16 @@ contract L5Delegation is Ownable, ReentrancyGuard {
         delegatorDelegations[msg.sender].push(id);
 
         emit DelegationCreated(
-            id, msg.sender, _delegate, _token, _allowedPayTo,
-            _resourcePattern, _maxPerPeriod, _period,
-            now_ + _validFor, true
+            id,
+            msg.sender,
+            _delegate,
+            _token,
+            _allowedPayTo,
+            _resourcePattern,
+            _maxPerPeriod,
+            _period,
+            now_ + _validFor,
+            true
         );
         return id;
     }
@@ -250,12 +245,12 @@ contract L5Delegation is Ownable, ReentrancyGuard {
      * @param _resource 实际调用的资源标识（必须匹配 resourcePattern）
      * @return remaining 本次结算后周期剩余额度
      */
-    function spend(
-        bytes32 id,
-        address _payTo,
-        uint256 _amount,
-        string calldata _resource
-    ) external onlyDelegate(id) nonReentrant returns (uint256) {
+    function spend(bytes32 id, address _payTo, uint256 _amount, string calldata _resource)
+        external
+        onlyDelegate(id)
+        nonReentrant
+        returns (uint256)
+    {
         Delegation storage d = delegations[id];
 
         // 1. 状态检查
@@ -280,8 +275,7 @@ contract L5Delegation is Ownable, ReentrancyGuard {
         d.totalSpent += _amount;
         d.requestCount += 1;
 
-        emit DelegationSpent(id, msg.sender, _payTo, _amount,
-            d.maxPerPeriod - d.spentThisPeriod, d.totalSpent);
+        emit DelegationSpent(id, msg.sender, _payTo, _amount, d.maxPerPeriod - d.spentThisPeriod, d.totalSpent);
         return d.maxPerPeriod - d.spentThisPeriod;
     }
 
@@ -307,9 +301,7 @@ contract L5Delegation is Ownable, ReentrancyGuard {
      * @dev 委托方(人类/能力方)可随时撤销。撤销后未来 spend 立即失败。
      * 这是「人类意志为最高法则」的链上映射。
      */
-    function revoke(bytes32 id, string calldata reason)
-        external onlyDelegator(id) returns (bool)
-    {
+    function revoke(bytes32 id, string calldata reason) external onlyDelegator(id) returns (bool) {
         Delegation storage d = delegations[id];
         require(d.revocable, "L5D: not revocable");
         require(d.status == DelegationStatus.Active, "L5D: already inactive");
@@ -341,9 +333,7 @@ contract L5Delegation is Ownable, ReentrancyGuard {
     // ═══════════════════════════════════════════════════
 
     /// @notice 仲裁/管理员暂停委托（批量用于 slash 场景）
-    function suspend(bytes32 id, string calldata reason)
-        external onlyOwner returns (bool)
-    {
+    function suspend(bytes32 id, string calldata reason) external onlyOwner returns (bool) {
         Delegation storage d = delegations[id];
         require(d.status == DelegationStatus.Active, "L5D: not active");
         d.status = DelegationStatus.Suspended;
@@ -369,9 +359,7 @@ contract L5Delegation is Ownable, ReentrancyGuard {
         return delegations[id];
     }
 
-    function getDelegationsByDelegate(address _delegate)
-        external view returns (bytes32[] memory, Delegation[] memory)
-    {
+    function getDelegationsByDelegate(address _delegate) external view returns (bytes32[] memory, Delegation[] memory) {
         bytes32[] memory ids = delegateDelegations[_delegate];
         Delegation[] memory out = new Delegation[](ids.length);
         for (uint256 i = 0; i < ids.length; i++) {
@@ -381,7 +369,9 @@ contract L5Delegation is Ownable, ReentrancyGuard {
     }
 
     function getDelegationsByDelegator(address _delegator)
-        external view returns (bytes32[] memory, Delegation[] memory)
+        external
+        view
+        returns (bytes32[] memory, Delegation[] memory)
     {
         bytes32[] memory ids = delegatorDelegations[_delegator];
         Delegation[] memory out = new Delegation[](ids.length);
@@ -393,20 +383,22 @@ contract L5Delegation is Ownable, ReentrancyGuard {
 
     function isActive(bytes32 id) external view returns (bool) {
         Delegation storage d = delegations[id];
-        return d.status == DelegationStatus.Active &&
-            block.timestamp <= d.validUntil;
+        return d.status == DelegationStatus.Active && block.timestamp <= d.validUntil;
     }
 
     /// @notice ERC-8004/7710 兼容：能力可被委托校验
     function canDelegate(address _delegator, address _delegate, string calldata _resource)
-        external view returns (bool)
+        external
+        view
+        returns (bool)
     {
         bytes32[] memory ids = delegatorDelegations[_delegator];
         for (uint256 i = 0; i < ids.length; i++) {
             Delegation storage d = delegations[ids[i]];
-            if (d.delegate == _delegate && d.status == DelegationStatus.Active &&
-                block.timestamp <= d.validUntil &&
-                _matchesResource(d.resourcePattern, _resource)) {
+            if (
+                d.delegate == _delegate && d.status == DelegationStatus.Active && block.timestamp <= d.validUntil
+                    && _matchesResource(d.resourcePattern, _resource)
+            ) {
                 return true;
             }
         }
@@ -417,19 +409,16 @@ contract L5Delegation is Ownable, ReentrancyGuard {
     // INTERNAL
     // ═══════════════════════════════════════════════════
 
-    function _generateId(
-        address _delegator,
-        address _delegate,
-        string memory _resource
-    ) internal view returns (bytes32) {
+    function _generateId(address _delegator, address _delegate, string memory _resource)
+        internal
+        view
+        returns (bytes32)
+    {
         return keccak256(abi.encodePacked(_delegator, _delegate, _resource, block.timestamp));
     }
 
     /// @notice 简单资源匹配：pattern 为空则全匹配；支持前缀/包含
-    function _matchesResource(
-        string memory _pattern,
-        string memory _resource
-    ) internal pure returns (bool) {
+    function _matchesResource(string memory _pattern, string memory _resource) internal pure returns (bool) {
         if (bytes(_pattern).length == 0) return true;
         // 直接相等
         if (keccak256(abi.encodePacked(_pattern)) == keccak256(abi.encodePacked(_resource))) {
@@ -438,7 +427,8 @@ contract L5Delegation is Ownable, ReentrancyGuard {
         // 前缀匹配(如 "origin:" 开头)
         bytes memory p = bytes(_pattern);
         bytes memory r = bytes(_resource);
-        if (p.length > 1 && p[p.length - 1] == 0x3A) { // 以 ':' 结尾 = 前缀
+        if (p.length > 1 && p[p.length - 1] == 0x3A) {
+            // 以 ':' 结尾 = 前缀
             if (r.length < p.length) return false;
             for (uint256 i = 0; i < p.length; i++) {
                 if (p[i] != r[i]) return false;

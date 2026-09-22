@@ -56,11 +56,11 @@ contract L5x402 is Ownable, ReentrancyGuard {
     // ═══════════════════════════════════════════════════
 
     enum ReceiptStatus {
-        Pending,     // 已登记，待结算
-        Settled,     // 已结算
-        Disputed,    // 争议中（路由到裁决）
-        Refunded,    // 已退款（Arkhai/GenLayer 裁决释放）
-        Failed       // 结算失败/作废
+        Pending, // 已登记，待结算
+        Settled, // 已结算
+        Disputed, // 争议中（路由到裁决）
+        Refunded, // 已退款（Arkhai/GenLayer 裁决释放）
+        Failed // 结算失败/作废
     }
 
     // ═══════════════════════════════════════════════════
@@ -69,31 +69,31 @@ contract L5x402 is Ownable, ReentrancyGuard {
 
     /// @notice x402 支付收据（对齐 x402 checklist #5）
     struct PaymentReceipt {
-        bytes32 receiptId;       // 收据唯一 ID
-        bytes32 requestId;       // 父请求 ID（HTTP 请求关联）
-        address payer;           // 付款方（Agent 或被委托方）
-        address payee;           // 收款方（服务/能力提供方）
-        address token;           // 结算代币（YUAN）
-        uint256 amount;          // 金额
-        uint256 chainId;         // 链 ID
-        string route;            // HTTP 路由/资源
-        bytes32 payloadHash;     // 请求参数哈希（Signed Evidence）
-        bytes32 permissionHash;  // 委托策略哈希（关联 L5Delegation）
-        uint256 timestamp;       // 登记时间
-        ReceiptStatus status;    // 状态
-        bool evidenceVerified;   // 服务端签名证据是否通过
+        bytes32 receiptId; // 收据唯一 ID
+        bytes32 requestId; // 父请求 ID（HTTP 请求关联）
+        address payer; // 付款方（Agent 或被委托方）
+        address payee; // 收款方（服务/能力提供方）
+        address token; // 结算代币（YUAN）
+        uint256 amount; // 金额
+        uint256 chainId; // 链 ID
+        string route; // HTTP 路由/资源
+        bytes32 payloadHash; // 请求参数哈希（Signed Evidence）
+        bytes32 permissionHash; // 委托策略哈希（关联 L5Delegation）
+        uint256 timestamp; // 登记时间
+        ReceiptStatus status; // 状态
+        bool evidenceVerified; // 服务端签名证据是否通过
     }
 
     /// @notice 权限管理器快照（对齐 x402 checklist #6）
     struct SpendSnapshot {
-        bytes32 policyId;        // 关联的委托策略 ID（L5Delegation.delegation id）
-        address delegate;        // 被委托方
-        uint256 spentTotal;      // 累计花费
-        uint256 spentPeriod;     // 周期已花费
-        uint256 requestCount;    // 请求次数
-        uint256 periodStart;     // 当前周期起点
-        uint256 period;          // 周期
-        uint256 maxPerPeriod;    // 周期上限
+        bytes32 policyId; // 关联的委托策略 ID（L5Delegation.delegation id）
+        address delegate; // 被委托方
+        uint256 spentTotal; // 累计花费
+        uint256 spentPeriod; // 周期已花费
+        uint256 requestCount; // 请求次数
+        uint256 periodStart; // 当前周期起点
+        uint256 period; // 周期
+        uint256 maxPerPeriod; // 周期上限
     }
 
     // ═══════════════════════════════════════════════════
@@ -111,9 +111,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
     mapping(bytes32 => SpendSnapshot) public snapshots;
 
     // 依赖注入
-    address public delegationContract;   // L5Delegation 地址
-    address public identityContract;     // AgentIdentity 地址
-    address public escrowContract;       // AgentEscrow 地址（争议时托管）
+    address public delegationContract; // L5Delegation 地址
+    address public identityContract; // AgentIdentity 地址
+    address public escrowContract; // AgentEscrow 地址（争议时托管）
 
     // 记录数
     uint256 public receiptCount;
@@ -133,44 +133,26 @@ contract L5x402 is Ownable, ReentrancyGuard {
         uint256 timestamp
     );
 
-    event ReceiptSettled(
-        bytes32 indexed receiptId,
-        bytes32 indexed paymentHash,
-        uint256 timestamp
-    );
+    event ReceiptSettled(bytes32 indexed receiptId, bytes32 indexed paymentHash, uint256 timestamp);
 
-    event ReceiptDisputed(
-        bytes32 indexed receiptId,
-        string reason,
-        uint256 timestamp
-    );
+    event ReceiptDisputed(bytes32 indexed receiptId, string reason, uint256 timestamp);
 
-    event ReceiptRefunded(
-        bytes32 indexed receiptId,
-        uint256 refundAmount,
-        uint256 timestamp
-    );
+    event ReceiptRefunded(bytes32 indexed receiptId, uint256 refundAmount, uint256 timestamp);
 
     event SnapshotUpdated(
-        bytes32 indexed policyId,
-        address indexed delegate,
-        uint256 spentTotal,
-        uint256 requestCount,
-        uint256 timestamp
+        bytes32 indexed policyId, address indexed delegate, uint256 spentTotal, uint256 requestCount, uint256 timestamp
     );
 
-    event RequirementVerified(
-        bytes32 indexed policyId,
-        bool allowed,
-        string reason,
-        uint256 timestamp
-    );
+    event RequirementVerified(bytes32 indexed policyId, bool allowed, string reason, uint256 timestamp);
 
     // ═══════════════════════════════════════════════════
     // MODIFIERS
     // ═══════════════════════════════════════════════════
 
-    modifier onlyAdmin() { require(msg.sender == owner(), "L5x402: not owner"); _; }
+    modifier onlyAdmin() {
+        require(msg.sender == owner(), "L5x402: not owner");
+        _;
+    }
 
     // ═══════════════════════════════════════════════════
     // CONSTRUCTOR
@@ -266,7 +248,7 @@ contract L5x402 is Ownable, ReentrancyGuard {
             token: _token,
             amount: _amount,
             chainId: block.chainid,
-            route: _bytes32ToString(_routeHash),  // 简化：route 以 hash 存储
+            route: _bytes32ToString(_routeHash), // 简化：route 以 hash 存储
             payloadHash: _payloadHash,
             permissionHash: _permissionHash,
             timestamp: block.timestamp,
@@ -286,7 +268,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
             tk.safeTransferFrom(_payer, _payee, _amount);
             receipts[receiptId].status = ReceiptStatus.Settled;
             _updateSnapshot(_permissionHash, _payer, _amount, block.timestamp);
-            emit ReceiptSettled(receiptId, keccak256(abi.encodePacked(_payee, _amount, block.timestamp)), block.timestamp);
+            emit ReceiptSettled(
+                receiptId, keccak256(abi.encodePacked(_payee, _amount, block.timestamp)), block.timestamp
+            );
         }
 
         emit ReceiptRecorded(receiptId, _requestId, _payer, _payee, _token, _amount, block.timestamp);
@@ -354,9 +338,7 @@ contract L5x402 is Ownable, ReentrancyGuard {
     // ═══════════════════════════════════════════════════
 
     /// @notice 标记收据进入争议（路由到裁决）
-    function disputeReceipt(bytes32 _receiptId, string calldata _reason)
-        external onlyAdmin returns (bool)
-    {
+    function disputeReceipt(bytes32 _receiptId, string calldata _reason) external onlyAdmin returns (bool) {
         PaymentReceipt storage r = receipts[_receiptId];
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(r.status != ReceiptStatus.Settled, "L5x402: already settled");
@@ -366,9 +348,7 @@ contract L5x402 is Ownable, ReentrancyGuard {
     }
 
     /// @notice 裁决结果：退款（对应 Arkhai/GenLayer 裁决释放 escrow）
-    function refundReceipt(bytes32 _receiptId, uint256 _refundAmount)
-        external onlyAdmin nonReentrant returns (bool)
-    {
+    function refundReceipt(bytes32 _receiptId, uint256 _refundAmount) external onlyAdmin nonReentrant returns (bool) {
         PaymentReceipt storage r = receipts[_receiptId];
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(r.status == ReceiptStatus.Disputed, "L5x402: not disputed");
@@ -418,7 +398,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
 
     /// @notice x402 权限管理器通用快照视图（对齐 checklist #6 的 getDelegatedSpendSnapshot）
     function getDelegatedSpendSnapshot(bytes32 _policyId)
-        external view returns (
+        external
+        view
+        returns (
             address delegate,
             uint256 spentTotal,
             uint256 spentPeriod,
@@ -463,7 +445,8 @@ contract L5x402 is Ownable, ReentrancyGuard {
     function _bytes32ToString(bytes32 _h) internal pure returns (string memory) {
         // 简化：bytes32 直接转为十六进制字符串前缀（route hash）
         bytes memory s = new bytes(66);
-        s[0] = '0'; s[1] = 'x';
+        s[0] = "0";
+        s[1] = "x";
         bytes16 hexDigits = "0123456789abcdef";
         bytes32 val = _h;
         for (uint256 i = 0; i < 32; i++) {
