@@ -56,6 +56,12 @@ action_ref  →  release receipt  →  verdict
 - `balance_delta` 让「多退少补」成为可核验事实，而非承诺。
 - `verdict_ref` 让三段链**闭合成环**。
 
+**链上实现（已落地，非纸面）：** `source-origin/l5-protocol` 的 `src/L5x402.sol`：
+- `PaymentReceipt.finality`（`enum ReceiptFinality { Final, ProvisionalSubjectToVerdict }`）
+- `PaymentReceipt.verdictRef`（经裁定释放时反向引用已先铸的 verdict）
+- 三条路径：自动条件释放（收据即 `Final`）· 经裁定释放（`attachVerdict`，收据引用 verdict）· 释放后争议（`markProvisional` → 后铸 verdict 由 `recordPostHocVerdict` **反向引用收据**，并翻转终局性）
+- 覆盖测试：`test/L5Finality.t.sol`（4 例，含引用方向与重复铸件守卫）
+
 ---
 
 ## 三、入册规则 / How you get counted
@@ -88,6 +94,7 @@ action_ref  →  release receipt  →  verdict
 ## 五、参考实现 / Reference
 
 - 收据结构参考 → `source-origin/l5-protocol` 的 escrow 与 demo（`demo/settlement_orchestrator.py`）
+- 收据终局性实现 → `src/L5x402.sol`（`ReceiptFinality` / `verdictRef` / `attachVerdict` / `markProvisional` / `recordPostHocVerdict`）
 - Boundary 规则参考 → internet-court `action-ref.md`「Boundary」节
 - 三段链设计讨论 → https://github.com/internet-court/internet-court-skill/issues/1
 
