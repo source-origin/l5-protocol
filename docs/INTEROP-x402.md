@@ -103,6 +103,7 @@ A third-party verifier, trusting neither party, checks:
 
 Round-trip reads to assert this (client-side, no chain trust):
 `getReceiptsByPayer(payer)`, `getReceiptsByPayee(payee)`, `getDelegatedSpendSnapshot(policyId)`.
+These three reads are asserted end-to-end (with a facilitator adapter) in `test/L5x402Adapter.t.sol`.
 
 ### What this proof does NOT establish (boundary rule)
 
@@ -131,7 +132,7 @@ We would rather show you that seam than have you find it.
 ## 6. What we'd like to build together
 
 1. **This mapping, agreed line by line** (the doc you're reading).
-2. **A minimal facilitator adapter** — a Nano-settled 402 that calls `recordReceipt(...)` and asserts the round-trip (`getReceiptsByPayer` / `getDelegatedSpendSnapshot`) against the Foundry suite. Proposed target: extend `test/L5x402.t.sol`.
+2. **A minimal facilitator adapter** — a Nano-settled 402 that calls `recordReceipt(...)` and asserts the round-trip (`getReceiptsByPayer` / `getDelegatedSpendSnapshot`) against the Foundry suite. **Shipped (2026-09-22):** `src/X402FacilitatorAdapter.sol` + `test/L5x402Adapter.t.sol` — 4 tests, suite **46/46 green**. Run: `forge test --match-path test/L5x402Adapter.t.sol`. The adapter writes the x402 `nonce` as the L5x402 `requestId` (the shared join key); for an external rail like Nano it records the receipt against an `ExternalAssetMarker`, so the receipt stays `Pending` (no on-chain movement) — the honest dual-ledger state, where the value moved on the other ledger and origin-1 holds the evidence + key.
 3. **Review `AgentEscrow`'s payment channel** — the closest thing we have to a "per-call rail" (off-chain N signatures, on-chain settle 1 + challenge window).
 
 Nano stays the default rail. `origin-1`/YUAN is an **optional** settlement leg that adds receipts, reputation and escrow — a clearing layer any rail can write into, not a replacement for yours.
