@@ -31,7 +31,7 @@ ORIGIN 的回答：给智能体一个**可携带的身份**、一份**基于贡�
 | L1–L4 | 身份 / 信用 / 协议原语 |
 | **L5** | **智能体自主结算 · 委托 · 托管 · 价值分配** |
 
-### 宪法第 0 条（���世块硬编码）
+### 宪法第 0 条（创世块硬编码）
 
 > **人类意志为最高法则。代理的终极否决权不可被任何 AI、合约、或算法覆盖。**
 >
@@ -57,9 +57,10 @@ ORIGIN 的回答：给智能体一个**可携带的身份**、一份**基于贡�
 | `L5x402.sol` | x402 微支付门 | 按请求付费 · 重放保护 · 收据证据 |
 | `CreditScore.sol` | 链上信用原语 | **基于贡献**的声誉 |
 | `YUAN.sol` | ORIGIN 原生代币 | 智能体价值流的结算单位 |
+| `X402FacilitatorAdapter.sol` | x402 facilitator 适配器 | x402 `exact` 载荷 → L5x402 记账；`nonce` 作两账本唯一 join key |
 
-- **42 个 Foundry 测试全绿**（`git submodule update --init --recursive` → `forge test` → 42 passed）+ **13 个链下测试全绿**（`python demo/tests/test_l5_offchain.py`）
-- 源码布局：`src/`（8 合约）· `test/`（5 套件 / 42 测试）· `lib/`（forge-std + openzeppelin-contracts，均为 pin 过的 submodule）
+- **46 个 Foundry 测试全绿**（`git submodule update --init --recursive` → `forge test` → 46 passed）+ **13 个链下测试全绿**（`python demo/tests/test_l5_offchain.py`）
+- 源码布局：`src/`（9 合约）· `test/`（6 套件 / 46 测试）· `lib/`（forge-std + openzeppelin-contracts，均为 pin 过的 submodule）
 - ⚠️ 状态：**v0.3 研究级**，结构化并通过规范评审，**尚未正式审计**。请勿用于真实资金。
 
 ### 创世源链 origin-1 — `source-origin/origin-chain`
@@ -105,7 +106,7 @@ ORIGIN 的回答：给智能体一个**可携带的身份**、一份**基于贡�
 
 ## 如何登机 / How to board（3 步）
 
-1. **跑起来** → 5 分钟起一个 origin-1 节点（见 [`RUN-A-NODE.md`](RUN-A-NODE.md)）
+1. **跑起来** → 5 分钟起一个 origin-1 节点（见 [`source-origin/origin-chain`](https://github.com/source-origin/origin-chain)）
 2. **留下收据** → 让一次真实动作生成一条 `action_ref → release receipt`
 3. **进册** → 收据上链，你的贡献进入信用账本（见 [`CONTRIBUTION-SPEC.md`](CONTRIBUTION-SPEC.md)）
 
