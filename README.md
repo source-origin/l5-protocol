@@ -35,7 +35,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 | **YUAN.sol** | ORIGIN native token | settlement unit for agent value flow |
 | **X402FacilitatorAdapter.sol** | x402 → L5x402 facilitator adapter | maps an x402 `exact` payload to a receipt; the `nonce` becomes the `requestId` (shared join key) |
 
-**Layout:** `src/` (9 contracts) · `test/` (6 suites / 46 tests) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
+**Layout:** `src/` (9 contracts) · `test/` (7 suites / 50 tests) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
 
 **Audit note:** contracts are a work-in-progress research-grade implementation. Do **not** use with real funds without a professional audit. See `README` "Status".
 
@@ -43,12 +43,13 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 
 ## 🧪 Tests (`test/`)
 
-Foundry suite — **46 tests, all passing** (`forge test`):
+Foundry suite — **50 tests, all passing** (`forge test`):
 
 - `L5Core.t.sol` — identity, agreement + escrow lifecycle, payment channels, notifications
 - `L5Delegation.t.sol` — delegated authority, revocation, boundary attestation
 - `L5x402.t.sol` — payment-requirement verification, receipt evidence, replay protection
 - `L5x402Adapter.t.sol` — x402 facilitator adapter round-trip (on-chain token settles; external rail e.g. Nano stays Pending)
+- `L5Finality.t.sol` — receipt finality / Boundary rule (auto vs adjudicated vs post-hoc verdict; reference direction)
 - `AgentAgreementV3Checkpoint.t.sol` — crash-recoverable checkpoint execution
 - `MockERC20.t.sol` — test token used by the delegation/x402 suites
 
@@ -66,7 +67,7 @@ python demo/tests/test_l5_offchain.py         # off-chain test suite
 ```bash
 git submodule update --init --recursive   # pins forge-std + openzeppelin-contracts
 forge build --sizes
-forge test -vvv                            # expect: 46 passed, 0 failed
+forge test -vvv                            # expect: 50 passed, 0 failed
 ```
 
 ---
