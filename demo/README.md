@@ -38,4 +38,4 @@ python tests/test_l5_offchain.py
 - **Escrow** → funds are held and only released on verified completion (`FUNDED → SETTLE`), with `REFUND` on timeout and `SLASH` on misbehavior.
 - **Append-only ledger** → every state transition is recorded, so a crash can recover at the last checkpoint — the same design intent as `AgentAgreement`'s checkpoint array. **Replay cannot double-settle** (taskId + checkpoint are the idempotency key).
 
-⚠️ Off-chain reference / educational. It does **not** execute the Solidity itself (stubs the interfaces). For the actual audit-grade logic see `contracts/`.
+⚠️ Off-chain reference / educational. It does **not** execute the Solidity itself (stubs the interfaces). For the actual audit-grade logic see `../src/`.
