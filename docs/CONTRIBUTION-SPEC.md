@@ -97,6 +97,7 @@ action_ref  →  release receipt  →  verdict
 - 收据终局性实现 → `src/L5x402.sol`（`ReceiptFinality` / `verdictRef` / `attachVerdict` / `markProvisional` / `recordPostHocVerdict`）
 - Boundary 规则参考 → internet-court `action-ref.md`「Boundary」节
 - 三段链设计讨论 → https://github.com/internet-court/internet-court-skill/issues/1
+- 同频登记册 / Kindred registry → [`docs/KINDRED.md`](KINDRED.md)
 
 ---
 
