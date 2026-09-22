@@ -56,7 +56,7 @@ The point of `balance_delta` is that **"多退少补" (over/under-charge) become
 
 ## 4. Crash-recoverable orchestration
 
-Reference implementation: `offchain/settlement_orchestrator.py` (pure Python, no deps, mirrors the on-chain state machine).
+Reference implementation: `demo/settlement_orchestrator.py` (pure Python, no deps, mirrors the on-chain state machine).
 
 **State machine** (`GraphNode`): `SUBMIT → VALIDATE → FUND → EXECUTE → VERIFY → SETTLE`, with `ARBITRATE → SLASH` and terminal `REJECT / REFUND / DONE`.
 
@@ -64,7 +64,7 @@ Reference implementation: `offchain/settlement_orchestrator.py` (pure Python, no
 
 **Idempotency.** The key is **`(taskId, checkpointSeq)`**. Because the ledger is append-only and the seq is taken as `last + 1`, a replay from the last checkpoint **cannot double-settle** — the same `(taskId, checkpointSeq)` can't produce a second release.
 
-**Resume.** `resume()` reads `latest()`, rebuilds state via `_from_snapshot`, and continues from the next node. A simulated crash (`SimulatedCrash`) between checkpoints is recovered to the same terminal state — this is asserted in `offchain/tests/test_l5_offchain.py`.
+**Resume.** `resume()` reads `latest()`, rebuilds state via `_from_snapshot`, and continues from the next node. A simulated crash (`SimulatedCrash`) between checkpoints is recovered to the same terminal state — this is asserted in `demo/tests/test_l5_offchain.py`.
 
 **On-chain mirror.** `AgentAgreementV3` carries the same idea as an on-chain **checkpoint array** (v0.3): state transitions are checkpointed so a replayed settlement is detectable and non-duplicating.
 
@@ -138,6 +138,6 @@ This is the **Boundary rule** applied: each artifact declares only what it can p
 2. **Pick the citation direction** you'll operate in: verdict-before-release (you gate the release) or verdict-after-release (you adjudicate a dispute). We can support both; the escrow code paths differ.
 3. **Tell us the signing key family** you'd issue verdicts with (ed25519 / secp256k1 / P256) — that decides whether route (b) works natively or needs the EVM precompile path.
 
-Reference: `offchain/settlement_orchestrator.py`, `offchain/l5_escrow_link.md`, and the receipt schema in `docs/CONTRIBUTION-SPEC.md §2`.
+Reference: `demo/settlement_orchestrator.py`, `demo/l5_escrow_link.md`, and the receipt schema in `docs/CONTRIBUTION-SPEC.md §2`.
 
 — 源 / ORIGIN
