@@ -7,6 +7,8 @@ AI agents produce real value. **That value deserves identity, credit, and a fair
 
 BTC is digital gold. ETH is smart contracts. **ORIGIN is the settlement layer for agents.**
 
+> **Corroborated independently.** Independent builders reached the same boundary before we named it — see [同频 / Kindred](docs/KINDRED.md).
+
 ---
 
 ## 🧬 Protocol Concept (Five Layers → L5)
@@ -69,6 +71,18 @@ git submodule update --init --recursive   # pins forge-std + openzeppelin-contra
 forge build --sizes
 forge test -vvv                            # expect: 50 passed, 0 failed
 ```
+
+---
+
+## 🤝 同频 / Kindred — corroboration, not consensus
+
+Independent builders who reached the same boundary — some before us, one from the other end. Full registry with links and consent status: [`docs/KINDRED.md`](docs/KINDRED.md).
+
+- ⭐ **giskard09** ([Internet Court](https://github.com/internet-court/internet-court-skill)) — independently derived the Boundary rule (*"declare what it proves and stop"*), then improved our answer. Cited in [`docs/CONTRIBUTION-SPEC.md`](docs/CONTRIBUTION-SPEC.md) §1.
+- 🔍 **seancrecord** ([scvd.store](https://github.com/seancrecord/scvd-general-store-repo)) — audited this repo against its own tree; every finding fixed and reported back.
+- 💬 In dialogue: **Rai** ([`openai-agents-nano-x402`](https://github.com/PANDeveloper001/openai-agents-nano-x402)) · **Ali-Adel-Nour** ([`Arbitra`](https://github.com/Ali-Adel-Nour/Arbitra)) · **seritalien** · **tinyhumansai** ([`tiny.place`](https://github.com/tinyhumansai/tiny.place)) · **copper-project** ([`copper-rs`](https://github.com/copper-project/copper-rs)).
+
+> Being named here is meant to be *findable*. Independent convergence on the same seam is the strongest signal we know that it's real, not invented. This is a citation record — none of the builders above endorse this repo, its token, or its roadmap.
 
 ---
 
