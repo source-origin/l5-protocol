@@ -128,6 +128,17 @@
 | 77 | `bld-0077` | **LegionForge** | `guardian`：agent 安全层，阻断 prompt injection / tool tampering / 失控 | 2026-09-24 |
 | 78 | `bld-0078` | **nohn3043-arch** | `second-perspective`（NOMOS）：可审计决策编排层，确定性基座 | 2026-09-24 |
 | 79 | `bld-0079` | **jposluns** | `grc_library`：治理/风险/合规（GRC）文档库 | 2026-09-24 |
+| 80 | `bld-0080` | **zerkerlabs** | `treeship`：agent 工作流的可移植信任收据（signed/chained/verifiable，Rekor 锚定） | 2026-09-24 |
+| 81 | `bld-0081` | **accord-protocol** | `accord-protocol`：自主 agent 工作协议开放标准（terms + verification receipts + settlement receipts + rail adapters） | 2026-09-24 |
+| 82 | `bld-0082` | **Fishman-free** | `agenttrust`：agent 互信协议（身份注册 + escrow + 争议 + 声誉） | 2026-09-24 |
+| 83 | `bld-0083` | **PayPerQ** | `ppq-enclave-proxy`：AWS Nitro Enclave 内跑推理的机密代理（可复现构建 + PCR0 度量） | 2026-09-24 |
+| 84 | `bld-0084` | **ark-forge** | `trust-layer`：agent 间交易的证明代理（SHA-256 证明链 + Ed25519 + RFC3161 时间戳 + Sigstore Rekor）；公开联系口 `contact@arkforge.tech` | 2026-09-24 |
+| 85 | `bld-0085` | **hraness** | `oh`：agent 记忆（源支撑记录 + 图证明 + 可验证历史） | 2026-09-24 |
+| 86 | `bld-0086` | **nirium-protocol** | `nirium`：Stellar/Soroban 上自主金库 + agentic 支付（x402/MPP） | 2026-09-24 |
+| 87 | `bld-0087` | **musaumakau** | `supply-chain-security`：签名/证明/执行流水线，K8s admission 拦截未签名镜像（SLSA） | 2026-09-24 |
+| 88 | `bld-0088` | **bochaco** | `dmarket`：Midnight 上三方 escrow + zk 的去中心化集市 | 2026-09-24 |
+| 89 | `bld-0089` | **Quantova** | `QRC-CONSENSUS`：QORUS 委员会 BFT（ML-DSA finality + 预算有界抽签 + TLA+ 模型） | 2026-09-24 |
+| 90 | `bld-0090` | **TTOPM** | `be-core-bridge`：Belel Protocol 主权 AI 核心（治理/身份） | 2026-09-24 |
 
 ---
 
