@@ -14,11 +14,12 @@
 
 ## ⭐ Independent convergence
 
-### giskard09 — Internet Court
+### giskard09 — Internet Court / argentum-core
 - **Project:** [internet-court/internet-court-skill](https://github.com/internet-court/internet-court-skill) — trust layer for agent-to-agent commerce
+- **Spec:** [giskard09/argentum-core](https://github.com/giskard09/argentum-core) — home of `action-ref.md` (the spec behind `draft-etcheverry-action-ref`). This issue was opened on internet-court's repo, but the spec is not theirs.
 - **Thread:** [internet-court-skill#1](https://github.com/internet-court/internet-court-skill/issues/1)
 - **Convergence:** the Boundary rule — *"each artifact should declare what it proves and stop there, rather than one object trying to own both directions."* Reached without seeing our work; then improved our own answer (`verdict-cites-receipt`) and named the failure mode (*"right-shape, wrong-object"*).
-- **Cited here:** `action-ref.md` §Boundary → see [`docs/CONTRIBUTION-SPEC.md`](CONTRIBUTION-SPEC.md) §1.
+- **Cited here:** `action-ref.md` §Boundary ([giskard09/argentum-core](https://github.com/giskard09/argentum-core/blob/main/docs/spec/action-ref.md#boundary--what-this-proves-and-what-it-does-not)) → see [`docs/CONTRIBUTION-SPEC.md`](CONTRIBUTION-SPEC.md) §1.
 - **Status:** consented to citation ("Yes, cite it").
 
 ### seancrecord — scvd.store

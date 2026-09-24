@@ -20,7 +20,7 @@ action_ref  →  release receipt  →  verdict
 | **release receipt** | 「价值确实按这些条件发生了移动」 | escrow（托管） |
 | **verdict** | 「这次释放是被正当裁定/验证的」 | 裁定层 / 验证器 |
 
-**规则（引用 internet-court `action-ref.md` 的 Boundary 原则）：**
+**规则（引用 giskard09/argentum-core 的 `action-ref.md` Boundary 原则）：**
 每个工件只声明**它能证明的东西**，然后止步；**后来的工件持有反向引用**，终态工件绝不预测未来的工件。
 
 - 自动条件释放（无争议）→ 收据即终态，无需 verdict。
@@ -95,7 +95,7 @@ action_ref  →  release receipt  →  verdict
 
 - 收据结构参考 → `source-origin/l5-protocol` 的 escrow 与 demo（`demo/settlement_orchestrator.py`）
 - 收据终局性实现 → `src/L5x402.sol`（`ReceiptFinality` / `verdictRef` / `attachVerdict` / `markProvisional` / `recordPostHocVerdict`）
-- Boundary 规则参考 → internet-court `action-ref.md`「Boundary」节
+- Boundary 规则参考 → `giskard09/argentum-core` 的 [`action-ref.md` §Boundary](https://github.com/giskard09/argentum-core/blob/main/docs/spec/action-ref.md#boundary--what-this-proves-and-what-it-does-not)（`draft-etcheverry-action-ref` 背后的规范；本讨论 issue 开在 internet-court 仓库，但该规范不属于它）
 - 三段链设计讨论 → https://github.com/internet-court/internet-court-skill/issues/1
 - 同频登记册 / Kindred registry → [`docs/KINDRED.md`](KINDRED.md)
 
