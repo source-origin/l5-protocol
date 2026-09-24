@@ -12,6 +12,7 @@
 1. **只增不改。** 条目一旦落账，永不重写；过时用 `superseded_by` 指向新条目，原件保留。`id` 单调递增（`bld-0001`…）。
 2. **每条都带得开的证据。** 每个条目必须引用一个第三方能打开的东西（issue / discussion / commit / PR / 链上 tx）。不能只有「我认识他」。**若对方表面已失联（改名/删号），标 `reachable:false` 并在 `note` 说明**——记录保留，不硬认归属。
 3. **记住 ≠ 计账。** 被引（convergence）是「记住」；**落了一条可核验的贡献收据**（`counted: true`）才是「计账」。两者分开记。
+   - **绑定规则（关键）：** 外部条目的 `counted` **只在该条目自己公布的密钥（`signing_key`）签署的收据上翻真——绝不在账本保管人自己记录的该条目言辞上翻真。** 否则「记住 → 计账」的距离只有一次 push。（此条由 scvd 指认，采纳。）
 4. **不声明背书。** 出现在这里只代表「他在同一条边界上」，不代表他支持本仓、代币或路线。
 5. **去重按身份。** 一人一条；跨仓库/多线程合并到同一 `identity`。
 
@@ -33,7 +34,9 @@
 | # | id | 身份 | 收敛点 | 首次 | 证据 |
 |---|----|------|--------|------|------|
 | 5 | `bld-0005` | **giskard09** | **Boundary 规则**（"每个工件声明它能证明什么然后停下"）；反向改进我方 `verdict-cites-receipt`，命名失效模式 *right-shape, wrong-object* | 2026-09-21 | [internet-court#1](https://github.com/internet-court/internet-court-skill/issues/1) · [argentum-core](https://github.com/giskard09/argentum-core) · [aps#121](https://github.com/Agent-Authority-Conformance/aps-conformance-suite/issues/121) |
-| 6 | `bld-0006` | **seancrecord** | 同一 Boundary 规则（授权侧）；对本仓做对抗审计，查出契约数/CI 声明/测试数三处真实漂移 | 2026-09-21 | [scvd#874](https://github.com/seancrecord/scvd-general-store-repo/issues/874) |
+| 6 | `bld-0006` ↻`bld-0041` | **seancrecord** | 同一 Boundary 规则（授权侧）；**读本仓公开树对照其自身文档，检出真实漂移**（契约数 / 无据 CI 声明 / 测试数） | 2026-09-21 | [scvd#874](https://github.com/seancrecord/scvd-general-store-repo/issues/874) |
+
+> ↻ `bld-0041` 覆盖 `bld-0006` 的措辞（追加式：原条目保留、指向覆盖项，不重写）。`bld-0006` 的 `counted` 恒为 `false`——scvd 的 `signing_key` 在 `scvd.store/.well-known/scvd-signing-key`，且声明**不会**向 origin-1 签收据（按构造为 false）。
 
 ## 三、对话中 / In dialogue (`💬`)
 

@@ -6,12 +6,13 @@
   "updated": "2026-09-24",
   "status": "v0-seeded",
   "rules": [
-    "append-only: entries are never rewritten, only superseded (superseded_by)",
+    "append-only: entries are never rewritten, only superseded (superseded_by); the original is preserved",
     "ids are monotonic: bld-0001 .. bld-NNNN",
     "every entry cites evidence a third party can open",
     "remembered != counted: counted requires a landed, independently-verifiable contribution receipt",
+    "counted flips for an EXTERNAL entry only on a receipt signed by that entry's own published key (signing_key), never on the ledger-keeper's own recording of the entry's words",
     "presence implies no endorsement",
-    "de-duplicated by identity"
+    "de-duplicated by identity (superseded entries excluded from the live identity set)"
   ],
   "tiers": {
     "internal": "founding team",
@@ -27,7 +28,7 @@
     { "id": "bld-0004", "handle": "TRAE", "surface": "origin", "tier": "internal", "note": "ecosystem & portal operations", "first_seen": "2026", "counted": true, "receipt_ref": "origin-1:genesis", "evidence": [] },
 
     { "id": "bld-0005", "handle": "giskard09", "surface": "github:giskard09", "tier": "converged", "note": "Boundary rule; improved our verdict-cites-receipt; named 'right-shape, wrong-object'", "first_seen": "2026-09-21", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/internet-court/internet-court-skill/issues/1", "https://github.com/giskard09/argentum-core", "https://github.com/Agent-Authority-Conformance/aps-conformance-suite/issues/121"] },
-    { "id": "bld-0006", "handle": "seancrecord", "surface": "github:seancrecord", "tier": "converged", "note": "same Boundary rule from the authorization side; adversarial audit surfaced 3 real drifts", "first_seen": "2026-09-21", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/seancrecord/scvd-general-store-repo/issues/874"] },
+    { "id": "bld-0006", "handle": "seancrecord", "surface": "github:seancrecord", "tier": "converged", "note": "same Boundary rule from the authorization side; adversarial audit surfaced 3 real drifts", "first_seen": "2026-09-21", "superseded_by": "bld-0041", "signing_key": "https://scvd.store/.well-known/scvd-signing-key", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/seancrecord/scvd-general-store-repo/issues/874"] },
 
     { "id": "bld-0007", "handle": "Ali-Adel-Nour", "surface": "github:Ali-Adel-Nour", "tier": "in_dialogue", "note": "Arbitra; verdict-before-release consensus; first external hard requirement (P256/EIP-7951)", "first_seen": "2026-09-21", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/Ali-Adel-Nour/Arbitra/issues/56"] },
     { "id": "bld-0008", "handle": "Rai", "surface": "github:PANDeveloper001", "tier": "in_dialogue", "note": "openai-agents-nano-x402: per-call settlement in self-custodied Nano. Surface unreachable as of 2026-09-24: github:PANDeveloper001 now 404s; a same-named repo exists under dhyabi2 (created 2026-09-23, fork=false) but attribution is UNCONFIRMED, so we do not claim it.", "first_seen": "2026-09-21", "reachable": false, "counted": false, "receipt_ref": null, "evidence": ["https://github.com/PANDeveloper001/openai-agents-nano-x402"] },
@@ -64,7 +65,9 @@
     { "id": "bld-0037", "handle": "csehammad", "surface": "github:csehammad", "tier": "observed", "note": "covenant-layer (09-19 candidate pool)", "first_seen": "2026-09-19", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/csehammad/covenant-layer"] },
     { "id": "bld-0038", "handle": "SeierkDev", "surface": "github:SeierkDev", "tier": "observed", "note": "Axon (09-19 candidate pool)", "first_seen": "2026-09-19", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/SeierkDev/Axon"] },
     { "id": "bld-0039", "handle": "mnemox-ai", "surface": "github:mnemox-ai", "tier": "observed", "note": "AgentRelay (09-19 candidate pool)", "first_seen": "2026-09-19", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/mnemox-ai/AgentRelay"] },
-    { "id": "bld-0040", "handle": "daydreamsai", "surface": "github:daydreamsai", "tier": "observed", "note": "lucid-agents (09-19 candidate pool)", "first_seen": "2026-09-19", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/daydreamsai/lucid-agents"] }
+    { "id": "bld-0040", "handle": "daydreamsai", "surface": "github:daydreamsai", "tier": "observed", "note": "lucid-agents (09-19 candidate pool)", "first_seen": "2026-09-19", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/daydreamsai/lucid-agents"] },
+
+    { "id": "bld-0041", "handle": "seancrecord", "surface": "github:seancrecord", "tier": "converged", "note": "read this repo's public tree against its own docs and surfaced drift", "supersedes": "bld-0006", "first_seen": "2026-09-21", "signing_key": "https://scvd.store/.well-known/scvd-signing-key", "counted": false, "receipt_ref": null, "evidence": ["https://github.com/seancrecord/scvd-general-store-repo/issues/874"] }
   ]
 }
 

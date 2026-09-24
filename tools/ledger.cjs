@@ -12,8 +12,10 @@
  *   - unique identity (by handle+surface)
  *   - every non-internal, still-reachable entry cites at least one evidence URL
  *   - tier must be one of the known tiers
- *   - "counted" entries must carry a receipt_ref
+ *   - "counted" entries must carry a receipt_ref; external counted entries must also carry a signing_key
+ *     (the entry's own published key - the keeper never flips it on its own recording of someone's words)
  *   - link rot is first-class: an entry may set reachable=false (surface gone) and must then explain in note
+ *   - superseded_by / supersedes must reference an existing id; superseded entries leave the identity set
  *
  * Zero deps. Node >= 18 (global fetch).
  */
@@ -54,12 +56,15 @@ function check(verifyEvidence) {
 
     if (!e.handle) errs.push(tag + ': missing handle');
     const ident = (e.handle || '') + '@' + (e.surface || '');
-    if (seenIdent.has(ident)) errs.push(tag + ': duplicate identity ' + ident);
-    seenIdent.add(ident);
+    if (!e.superseded_by) {   // superseded entries leave the live identity set
+      if (seenIdent.has(ident)) errs.push(tag + ': duplicate identity ' + ident);
+      seenIdent.add(ident);
+    }
 
     if (!TIERS.includes(e.tier)) errs.push(tag + ': invalid tier "' + e.tier + '" (allowed: ' + TIERS.join(', ') + ')');
     if (typeof e.counted !== 'boolean') errs.push(tag + ': "counted" must be boolean');
     if (e.counted && !e.receipt_ref) errs.push(tag + ': counted=true requires a receipt_ref');
+    if (e.counted && e.tier !== 'internal' && !e.signing_key) errs.push(tag + ": counted=true (external) requires signing_key (the entry's own published key)");
     if (!e.counted && e.receipt_ref) warn.push(tag + ': has receipt_ref but counted=false');
     if (!e.evidence || !Array.isArray(e.evidence)) errs.push(tag + ': evidence must be an array');
 
@@ -70,6 +75,13 @@ function check(verifyEvidence) {
     }
     if (!reachable && !e.note) errs.push(tag + ': reachable=false requires a note explaining the surface is gone');
     if (e.tier === 'internal' && (e.evidence || []).length === 0) warn.push(tag + ': internal entry has no evidence link');
+  }
+
+  // reference validation (after the full id set is known)
+  for (const e of L.entries) {
+    for (const f of ['superseded_by', 'supersedes']) {
+      if (e[f] && !seenIds.has(e[f])) errs.push((e.id || '') + ': ' + f + ' -> ' + e[f] + ' does not exist');
+    }
   }
 
   report(errs, warn);

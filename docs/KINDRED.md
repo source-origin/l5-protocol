@@ -7,7 +7,7 @@
 **Legend**
 
 - ⭐ **Independent convergence** — reached the same rule/result without seeing ours.
-- 🔍 **Adversarial review** — audited our claims and surfaced real drift.
+- 🔍 **External read** — read our public tree against its own docs and surfaced real drift.
 - 💬 **In dialogue** — public thread in progress. No endorsement implied in either direction.
 
 ---
@@ -25,9 +25,9 @@
 ### seancrecord — scvd.store
 - **Project:** [seancrecord/scvd-general-store-repo](https://github.com/seancrecord/scvd-general-store-repo) — an evidence observatory for agentic commerce (free preflight/conformance desk)
 - **Thread:** [scvd-general-store-repo#874](https://github.com/seancrecord/scvd-general-store-repo/issues/874)
-- **Convergence:** the same Boundary rule, from the authorization side — then audited this repo against its own tree and surfaced concrete drift (contract count vs. tree, an unbacked CI claim, a test-count that didn't run).
+- **Convergence:** the same Boundary rule, from the authorization side — then read this repo's public tree against its own docs and surfaced concrete drift (contract count vs. tree, an unbacked CI claim, a test-count that didn't run).
 - **What changed here:** all findings fixed and reported back with commits (see `docs/ONEPAGER.md`, `README`).
-- **Status:** referral exchange agreed — *"point them at us when you have them."*
+- **Status:** free preflight on the x402 door when it serves; conformance desk on receipts. (Thread: https://github.com/seancrecord/scvd-general-store-repo/issues/874) — *"point them at us when you have them."*
 
 ---
 

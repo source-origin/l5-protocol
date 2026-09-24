@@ -113,5 +113,6 @@ action_ref  →  release receipt  →  verdict
 - 校验：`node tools/ledger.cjs check [--evidence]`（格式 + id 单调 + 身份去重 + 证据可达）
 
 > 铁律 3：**记住 ≠ 计账。** 被引（convergence）是「记住」；落了一条可核验的贡献收据（`counted:true`）才是「计账」。前 99 名来自 `counted:true` 的去重身份，不来自申请表。
+> 绑定规则：外部条目的 `counted` 只在该条目自己公布的 `signing_key` 签署的收据上翻真，绝不在账本保管人自己记录的该条目言辞上翻真（见 `LEDGER.md` 铁律 3）。
 
 **源·ORIGIN · 量子总督 · 2026-09-21**
