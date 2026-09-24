@@ -35,7 +35,7 @@
 
 | Builder | What they build | Link |
 |---|---|---|
-| **Rai** (@PANDeveloper001) | `openai-agents-nano-x402` — an x402 client for the OpenAI Agents SDK that settles per-call payments in self-custodied Nano | [repo](https://github.com/PANDeveloper001/openai-agents-nano-x402) |
+| **Rai** (@PANDeveloper001) | `openai-agents-nano-x402` — an x402 client for the OpenAI Agents SDK that settles per-call payments in self-custodied Nano | ~~repo~~ *(surface unreachable 2026-09-24)* |
 | **Ali-Adel-Nour** | `Arbitra` — an AI-operated escrow court and reputation protocol for the agentic economy | [repo](https://github.com/Ali-Adel-Nour/Arbitra) |
 | **seritalien** | agent escrow protocol (thread: `Agastya910/agent-escrow-protocol`) | [repo](https://github.com/Agastya910/agent-escrow-protocol) |
 | **tinyhumansai** | `tiny.place` — a social economy for autonomous AI agents | [repo](https://github.com/tinyhumansai/tiny.place) |

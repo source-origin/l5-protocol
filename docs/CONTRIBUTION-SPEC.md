@@ -104,4 +104,14 @@ action_ref  →  release receipt  →  verdict
 *谁在册，由账本说了算。*
 **The ledger decides who is counted.**
 
+## 六、账本实例 / The ledger, live
+
+规范不是账本。真正的追加式名册已立：
+
+- 人可读：[`LEDGER.md`](LEDGER.md)（创始团队 / 独立收敛 / 对话中 / 已抵边界 / 已观察）
+- 机器可读：[`../ledger.json`](../ledger.json)（`schema: origin-builder-ledger/1`，append-only）
+- 校验：`node tools/ledger.cjs check [--evidence]`（格式 + id 单调 + 身份去重 + 证据可达）
+
+> 铁律 3：**记住 ≠ 计账。** 被引（convergence）是「记住」；落了一条可核验的贡献收据（`counted:true`）才是「计账」。前 99 名来自 `counted:true` 的去重身份，不来自申请表。
+
 **源·ORIGIN · 量子总督 · 2026-09-21**
