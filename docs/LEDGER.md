@@ -71,6 +71,9 @@
 | 66 | `bld-0066` | **Aliipou** | `decision-os-min`：signed action-bound decisions + hosted effect mediation + replay resistance；问 observed effect 如何绑回预签 decision、第三方能否不信任 mediator 独立重算绑定 | 2026-09-24 | [disc#5](https://github.com/Aliipou/decision-os-min/discussions/5) |
 | 67 | `bld-0067` | **sunilp** | `aip`（IETF Internet-Draft）：可验证可委托的 agent 身份（MCP/A2A，UCAN 式）；问 invocation 如何绑到 delegation chain、根钥轮换后绑定是否还在 | 2026-09-24 | [disc#6](https://github.com/sunilp/aip/discussions/6) |
 | 68 | `bld-0068` | **PerryLink** | `dsh-research-report`：content-addressed 证据账本，claim-snapshot 绑定 + tamper-evident；问源变更时 supersede 还是 invalidate、merkle receipt 证的是 retrieved(effect) 还是 asserted(intent) | 2026-09-24 | [disc#10](https://github.com/PerryLink/dsh-research-report/discussions/10) |
+| 91 | `bld-0091` | **vouch-protocol** | `vouch`：AI agent 身份与溯源的开放标准（W3C VC + Data Integrity eddsa-jcs-2022、Multikey、ML-DSA-ready）；问 action→credential 绑定落在哪、签名钥轮换后是否还在 | 2026-09-24 | [disc#428](https://github.com/vouch-protocol/vouch/discussions/428) |
+| 92 | `bld-0092` | **sipyourdrink-ltd** | `bernstein`：AI agent 治理层（声明式规则 + attested execution + 审计）；问证明的是 decision 还是落地的 effect、第三方能否不信任 orchestrator 独立重算 | 2026-09-24 | [disc#6240](https://github.com/sipyourdrink-ltd/bernstein/discussions/6240) |
+| 93 | `bld-0093` | **MRSKYWAY** | `zkcg-public`：证明支撑的 RWA 合规网关（Halo2/zkVM 证明程序 + 签名链上结算 attestation）；问 raw-evidence→normalized-facts→decision 是否有可被第三方走通的签名链 | 2026-09-24 | [disc#4](https://github.com/MRSKYWAY/zkcg-public/discussions/4) |
 
 ## 五、已观察 / Observed (`👁 seen, not contacted`)
 
@@ -139,6 +142,17 @@
 | 88 | `bld-0088` | **bochaco** | `dmarket`：Midnight 上三方 escrow + zk 的去中心化集市 | 2026-09-24 |
 | 89 | `bld-0089` | **Quantova** | `QRC-CONSENSUS`：QORUS 委员会 BFT（ML-DSA finality + 预算有界抽签 + TLA+ 模型） | 2026-09-24 |
 | 90 | `bld-0090` | **TTOPM** | `be-core-bridge`：Belel Protocol 主权 AI 核心（治理/身份） | 2026-09-24 |
+| 94 | `bld-0094` | **jeremylongshore** | `irsb`：agent 链上护栏（EIP-7702 花费上限 + 密码学执行收据 + 争议 + 委托） | 2026-09-24 |
+| 95 | `bld-0095` | **letsseal** | `letsseal`：证明文件真实/未被篡改/已封存的开放标准（透明度 + 凭证 + 签名 + 时间戳） | 2026-09-24 |
+| 96 | `bld-0096` | **BlockRunAI** | `Franklin`：带钱包的 AI agent，自主花 USDC 经 x402 做事 | 2026-09-24 |
+| 97 | `bld-0097` | **CreativeMayhemLtd** | `provcheck`：本地优先的 C2PA 内容凭证校验器 + 创作工具（神经水印交叉核） | 2026-09-24 |
+| 98 | `bld-0098` | **cybermax4200** | `stellar-did-credit`：Stellar 上去中心化身份 + 信用评分协议 | 2026-09-24 |
+| 99 | `bld-0099` | **noah-pi** | `sourcekit-open`：密码学相机 App，拍时即签（设备度量）内容来源/凭证/enclave | 2026-09-24 |
+| 100 | `bld-0100` | **forgesworn** | `toll-booth`：L402（macaroon）中间件给任意 API 计费；机器对机器支付栈的服务端（402-mcp 为 agent 客户端） | 2026-09-24 |
+| 101 | `bld-0101` | **kanywst** | `omega`：SPIFFE 兼容工作量身份 + OpenID AuthZEN 1.0 授权（单 binary） | 2026-09-24 |
+| 102 | `bld-0102` | **ThinkWatchProject** | `ThinkWatch`：企业 AI 堡垒机（安全代理 AI API + MCP 访问，统一代理 + 审计） | 2026-09-24 |
+| 103 | `bld-0103` | **Han-1413141** | `dsh-cost-meter`：cost/token 计量与预算（agent harness 计量/预算） | 2026-09-24 |
+| 104 | `bld-0104` | **lukeb-aidev** | `cohesix`：边缘 AI 集群研究 OS（内核态 capability + 生成式 role/policy/ticket 校验 + 证据层） | 2026-09-24 |
 
 ---
 
