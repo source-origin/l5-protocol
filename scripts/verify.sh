@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-# scripts/verify.sh — deterministic repro of this repo's test suite.
+# scripts/verify.sh - deterministic repro of this repo's test suite.
 # Requires only: git, foundry (forge). No network beyond git submodules.
-# Usage:  sh scripts/verify.sh
+# Usage:  sh scripts/verify.sh   (also ./scripts/verify.sh - committed executable)
 set -eu
 
 cd "$(dirname "$0")/.."
@@ -13,7 +13,7 @@ echo
 echo "== test functions by file =="
 total=0
 for f in test/*.t.sol; do
-  n=$(grep -c 'function test' "$f" || true)
+  n=$(grep -cE '^[[:space:]]*function[[:space:]]+test' "$f" || true)
   total=$((total + n))
   printf '%3d  %s\n' "$n" "$f"
 done
