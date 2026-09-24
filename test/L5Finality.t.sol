@@ -25,7 +25,11 @@ contract L5FinalityTest is Test {
         x402 = new L5x402();
         yuan = new MockERC20();
         yuan.mint(payer, 1_000e6);
+        yuan.mint(payee, 1_000e6);
         vm.prank(payer);
+        yuan.approve(address(x402), type(uint256).max);
+        // payee may need to fund a refund after an adjudicated dispute
+        vm.prank(payee);
         yuan.approve(address(x402), type(uint256).max);
     }
 
@@ -97,5 +101,46 @@ contract L5FinalityTest is Test {
         x402.markProvisional(id);
         vm.expectRevert(bytes("L5x402: already provisional"));
         x402.markProvisional(id);
+    }
+
+    /// Builds a Pending receipt (no allowance) -- the only state a dispute can
+    /// enter, since a Settled release is terminal by design.
+    function _pending(bytes32 reqId, uint256 amt) internal returns (bytes32 id) {
+        vm.prank(payer);
+        yuan.approve(address(x402), 0);
+        id = x402.recordReceipt(reqId, payer, payee, address(yuan), amt, routeHash, payloadHash, permHash);
+    }
+
+    /// Review point (internet-court-skill#1): a receipt cannot be both Disputed
+    /// and Final. Entering dispute moves it into the third state explicitly,
+    /// rather than leaving a final claim standing over an open dispute window.
+    function test_Disputed_ReceiptIsNotFinal() public {
+        bytes32 id = _pending(keccak256("d1"), 100e6);
+        assertEq(uint256(x402.getReceipt(id).status), uint256(L5x402.ReceiptStatus.Pending), "pending");
+        assertEq(
+            uint256(x402.getReceipt(id).finality),
+            uint256(L5x402.ReceiptFinality.Final),
+            "mint default is terminal"
+        );
+
+        x402.disputeReceipt(id, "post-release dispute");
+        L5x402.PaymentReceipt memory r = x402.getReceipt(id);
+        assertEq(uint256(r.status), uint256(L5x402.ReceiptStatus.Disputed), "disputed");
+        assertEq(
+            uint256(r.finality),
+            uint256(L5x402.ReceiptFinality.ProvisionalSubjectToVerdict),
+            "disputed must not keep claiming Final"
+        );
+    }
+
+    /// The adjudicated refund reaches Final: finality is earned at the verdict,
+    /// not asserted at mint.
+    function test_Refund_ReachesFinal() public {
+        bytes32 id = _pending(keccak256("d2"), 100e6);
+        x402.disputeReceipt(id, "dispute");
+        x402.refundReceipt(id, 40e6);
+        L5x402.PaymentReceipt memory r = x402.getReceipt(id);
+        assertEq(uint256(r.status), uint256(L5x402.ReceiptStatus.Refunded), "refunded");
+        assertEq(uint256(r.finality), uint256(L5x402.ReceiptFinality.Final), "verdict -> final");
     }
 }

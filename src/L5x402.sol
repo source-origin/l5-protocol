@@ -377,6 +377,13 @@ contract L5x402 is Ownable, ReentrancyGuard {
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(r.status != ReceiptStatus.Settled, "L5x402: already settled");
         r.status = ReceiptStatus.Disputed;
+        // A disputed receipt must not keep claiming Final: value has moved and
+        // finality is now pending a verdict. Enter the third state explicitly,
+        // so a receipt can never be both Disputed and Final at the same time.
+        if (r.finality != ReceiptFinality.ProvisionalSubjectToVerdict) {
+            r.finality = ReceiptFinality.ProvisionalSubjectToVerdict;
+            emit ReceiptMarkedProvisional(_receiptId, block.timestamp);
+        }
         emit ReceiptDisputed(_receiptId, _reason, block.timestamp);
         return true;
     }
@@ -391,6 +398,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
         // 从 payee 退回 payer（裁决追回）
         IERC20(r.token).safeTransferFrom(r.payee, r.payer, _refundAmount);
         r.status = ReceiptStatus.Refunded;
+        // Verdict spoken: the adjudicated refund closes the dispute, so finality
+        // is reached here rather than asserted up front at mint time.
+        r.finality = ReceiptFinality.Final;
         emit ReceiptRefunded(_receiptId, _refundAmount, block.timestamp);
         return true;
     }
