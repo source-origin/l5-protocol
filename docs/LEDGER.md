@@ -74,6 +74,10 @@
 | 91 | `bld-0091` | **vouch-protocol** | `vouch`：AI agent 身份与溯源的开放标准（W3C VC + Data Integrity eddsa-jcs-2022、Multikey、ML-DSA-ready）；问 action→credential 绑定落在哪、签名钥轮换后是否还在 | 2026-09-24 | [disc#428](https://github.com/vouch-protocol/vouch/discussions/428) |
 | 92 | `bld-0092` | **sipyourdrink-ltd** | `bernstein`：AI agent 治理层（声明式规则 + attested execution + 审计）；问证明的是 decision 还是落地的 effect、第三方能否不信任 orchestrator 独立重算 | 2026-09-24 | [disc#6240](https://github.com/sipyourdrink-ltd/bernstein/discussions/6240) |
 | 93 | `bld-0093` | **MRSKYWAY** | `zkcg-public`：证明支撑的 RWA 合规网关（Halo2/zkVM 证明程序 + 签名链上结算 attestation）；问 raw-evidence→normalized-facts→decision 是否有可被第三方走通的签名链 | 2026-09-24 | [disc#4](https://github.com/MRSKYWAY/zkcg-public/discussions/4) |
+| 105 | `bld-0105` | **Sorcha-Platform** | `Sorcha`：多方数据流编排的去中心化登记平台（声明式 JSON blueprint + 签名 append-only 登记簿 + Merkle docket + DID）；问 docket 证明的是交易(effect)还是产出它的工作流 decision、封存记录是否提交当时生效的 blueprint 版本 | 2026-09-25 | [disc#1716](https://github.com/Sorcha-Platform/Sorcha/discussions/1716) |
+| 106 | `bld-0106` | **ehelbig1** | `talos`：可验证 agent 执行运行时（credential-free WASM worker + 签名跨进程数据面 + capability 格 + 签名 JobRequest/JobResult）；问 JobResult 是否提交 request 哈希以离线绑定、replay-finality 是否只在验证器状态活着时可知 | 2026-09-25 | [disc#942](https://github.com/ehelbig1/talos/discussions/942) |
+| 107 | `bld-0107` | **archetech** | `archon`：点对点去中心化身份平台，`did:cid` 参考实现（凭证 issue/bind/publish/reveal/revoke）；问 revoke 存在时凭证使用如何锚到时间点、历史验证能否脱离 issuer 独立判定 | 2026-09-25 | [disc#1282](https://github.com/archetech/archon/discussions/1282) |
+| 108 | `bld-0108` | **delphisecurity** | `xaidr`：agent 进程内运行时安全传感器（三态裁决 + 本地 YAML 授权策略 + W3C Trace Context 跨进程委托溯源）；问发出的事件是签名防篡改收据还是观测遥测、跨 agent 拆攻击的锚是什么 | 2026-09-25 | [disc#29](https://github.com/delphisecurity/xaidr/discussions/29) |
 
 ## 五、已观察 / Observed (`👁 seen, not contacted`)
 
@@ -153,6 +157,13 @@
 | 102 | `bld-0102` | **ThinkWatchProject** | `ThinkWatch`：企业 AI 堡垒机（安全代理 AI API + MCP 访问，统一代理 + 审计） | 2026-09-24 |
 | 103 | `bld-0103` | **Han-1413141** | `dsh-cost-meter`：cost/token 计量与预算（agent harness 计量/预算） | 2026-09-24 |
 | 104 | `bld-0104` | **lukeb-aidev** | `cohesix`：边缘 AI 集群研究 OS（内核态 capability + 生成式 role/policy/ticket 校验 + 证据层） | 2026-09-24 |
+| 109 | `bld-0109` | **JuanLunaIA** | `aegis-latent-core`：多 provider LLM 应用的 AI 治理与证据网关（FastAPI + 策略 + 审计） | 2026-09-25 |
+| 110 | `bld-0110` | **berkmancenter** | `keyring-wallet`：用户可控身份的开源数字钱包（交换可验证凭证） | 2026-09-25 |
+| 111 | `bld-0111` | **Sphereon-Opensource** | `Identity-Development-Kit`：开源跨平台身份开发套件（可验证凭证） | 2026-09-25 |
+| 112 | `bld-0112` | **bastani-inc** | `atomic`：可验证的编码 agent 运行时（自然语言定义流程 + 可验证审批） | 2026-09-25 |
+| 113 | `bld-0113` | **akaion-ai** | `annona`：AI agent 的主权执行内核（决定每步在哪跑 + 逐步策略） | 2026-09-25 |
+| 114 | `bld-0114` | **karagozemin** | `Sub-Rosa`：Stellar 上可嵌入的密封市场基建（密标竞价/撮合 + 可验证收据） | 2026-09-25 |
+| 115 | `bld-0115` | **notboatanchor** | `gif`：AI 工具调用的治理运行时（强制 persona 范围与组合策略 + 审计） | 2026-09-25 |
 
 ---
 
