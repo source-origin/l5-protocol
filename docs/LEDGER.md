@@ -66,6 +66,8 @@
 | 21 | `bld-0021` | **ariffazil** | `arifOS`：judge-before-execute + VAULT999 receipts | 2026-09-24 | [repo](https://github.com/ariffazil/arifOS) |
 | 42 | `bld-0042` | **cirwel** | `unitares`：长时程 agent 问责基建（identity / claim / evidence / review / outcome / reconstruction）；问「记录者亦裁判」缝隙 | 2026-09-24 | [disc#2420](https://github.com/cirwel/unitares/discussions/2420) |
 | 43 | `bld-0043` | **Zoverions** | `AXIOM-MESH`：intent→policy plan→approved effects→加密链接证据；问 intent vs effect 绑定 + 可否反转 | 2026-09-24 | [disc#1819](https://github.com/Zoverions/AXIOM-MESH/discussions/1819) |
+| 54 | `bld-0054` | **Mindburn-Labs** | `helm-ai-kernel`：fail-closed 执行防火墙 + signed receipts + EvidencePacks 离线核验；**逐字同频我们的 seam#8**（收据完整性 `integrity_valid` 与签名者信任 `signer_trusted` 分作两裁）；问“权威绑定从哪来” | 2026-09-24 | [disc#978](https://github.com/orgs/Mindburn-Labs/discussions/978) |
+| 55 | `bld-0055` | **DanceNitra** | `inspeximus`：agent 记忆“改一次已知、旧值退休”（**逐字同频我们的 append-only + supersede**）+ verifiable erasure；问 supersede 与 erasure 如何在一条日志共存、witness 是谁 | 2026-09-24 | [disc#34](https://github.com/DanceNitra/inspeximus/discussions/34) |
 
 ## 五、已观察 / Observed (`👁 seen, not contacted`)
 
@@ -102,6 +104,16 @@
 | 51 | `bld-0051` | **kychee-com** | `run402`：agent 后端基建，x402/MPP 计费 | 2026-09-24 |
 | 52 | `bld-0052` | **Its-fortunatefolly** | `HubVibe`：machine-payable work（HTTP 402），per-job receipt | 2026-09-24 |
 | 53 | `bld-0053` | **Dragonmonk111** | `junoclaw`：可验证自治 + 链上真值市场 + 工作史 attestation | 2026-09-24 |
+| 56 | `bld-0056` | **ashaveri** | `ashaveri`：OpenAI 兼容推理，每个响应带签名 COSE_Sign1 收据（request/response hash + 权重清单 + 机密硬件度量）；"Change the model. Keep the evidence." | 2026-09-24 |
+| 57 | `bld-0057` | **Garl-Protocol** | `garl`：ECDSA-secp256k1+RFC6979 签名的 Action Receipt，绑定到授权 token，Merkle 锚定 Base；能力 token 只能收窄不可放大。⚠️ **已归档（2026-09-24），托管服务下线** | 2026-09-24 |
+| 58 | `bld-0058` | **at1c-protocol** | `at1c-protocol-official`：人类控制 AI 的证据层；"Don't trust us. Verify the receipt." + 主权身份/注册表 | 2026-09-24 |
+| 59 | `bld-0059` | **tuannguyenvan95** | `AgentSLA`：子 Agent SLA 裁决 + bounty escrow（GenLayer） | 2026-09-24 |
+| 60 | `bld-0060` | **chainloop-dev** | `chainloop`：SDLC 证据库 + 策略引擎（in-toto / SLSA / SBOM attestations） | 2026-09-24 |
+| 61 | `bld-0061` | **darklordVirtual** | `REMORA-research`：policy-gated 治理（OPA/Rego，pre-execution，负结果记录） | 2026-09-24 |
+| 62 | `bld-0062` | **edgepillar** | `zenon-x402-poc`：Zenon 作 HTTP-native agent 支付结算轨 | 2026-09-24 |
+| 63 | `bld-0063` | **naulonapp** | `naulon`：agentic web 的按读付费 toll（x402/USDC nanopayment，归因即分成规则） | 2026-09-24 |
+| 64 | `bld-0064` | **Vortx-AI** | `emem`：物理世界的机器维护外部记忆（content-addressed + ed25519 + transparency log + 确定性） | 2026-09-24 |
+| 65 | `bld-0065` | **Luminous-Dynamics** | `mycelix`：Holochain 上的分形治理 CivOS（身份/governance） | 2026-09-24 |
 
 ---
 
