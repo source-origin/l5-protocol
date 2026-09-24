@@ -79,12 +79,7 @@ contract X402FacilitatorAdapter is Ownable {
     mapping(address => bool) public facilitators;
 
     event ExactRecorded(
-        bytes32 indexed receiptId,
-        bytes32 indexed nonce,
-        address indexed from,
-        address to,
-        address asset,
-        uint256 value
+        bytes32 indexed receiptId, bytes32 indexed nonce, address indexed from, address to, address asset, uint256 value
     );
     event FacilitatorSet(address indexed facilitator, bool allowed);
     event L5x402Set(address indexed l5x402);
@@ -126,9 +121,8 @@ contract X402FacilitatorAdapter is Ownable {
 
         address token = p.asset == address(0) ? externalAsset : p.asset;
 
-        receiptId = IL5x402Record(l5x402).recordReceipt(
-            p.nonce, p.from, p.to, token, p.value, routeHash, payloadHash, permissionHash
-        );
+        receiptId = IL5x402Record(l5x402)
+            .recordReceipt(p.nonce, p.from, p.to, token, p.value, routeHash, payloadHash, permissionHash);
 
         emit ExactRecorded(receiptId, p.nonce, p.from, p.to, token, p.value);
     }

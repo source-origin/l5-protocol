@@ -84,11 +84,7 @@ contract L5FinalityTest is Test {
         assertEq(vReceiptRef, id, "later verdict holds backward reference");
         assertTrue(vIsFinal, "verdict says final");
         assertEq(x402.verdictOfReceipt(id), v, "receipt -> its post-hoc verdict");
-        assertEq(
-            uint256(x402.getReceipt(id).finality),
-            uint256(L5x402.ReceiptFinality.Final),
-            "verdict flips finality"
-        );
+        assertEq(uint256(x402.getReceipt(id).finality), uint256(L5x402.ReceiptFinality.Final), "verdict flips finality");
 
         // duplicate verdict rejected
         vm.expectRevert(bytes("L5x402: duplicate verdict"));
@@ -118,9 +114,7 @@ contract L5FinalityTest is Test {
         bytes32 id = _pending(keccak256("d1"), 100e6);
         assertEq(uint256(x402.getReceipt(id).status), uint256(L5x402.ReceiptStatus.Pending), "pending");
         assertEq(
-            uint256(x402.getReceipt(id).finality),
-            uint256(L5x402.ReceiptFinality.Final),
-            "mint default is terminal"
+            uint256(x402.getReceipt(id).finality), uint256(L5x402.ReceiptFinality.Final), "mint default is terminal"
         );
 
         x402.disputeReceipt(id, "post-release dispute");

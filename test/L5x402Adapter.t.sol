@@ -38,9 +38,7 @@ contract L5x402AdapterTest is Test {
     }
 
     function _payload(address asset) internal view returns (X402FacilitatorAdapter.ExactPayload memory) {
-        return X402FacilitatorAdapter.ExactPayload({
-            from: payer, to: payee, asset: asset, value: 5 ether, nonce: nonce
-        });
+        return X402FacilitatorAdapter.ExactPayload({from: payer, to: payee, asset: asset, value: 5 ether, nonce: nonce});
     }
 
     // ---- 1. on-chain token: full round trip, settles + snapshot bumps ----
