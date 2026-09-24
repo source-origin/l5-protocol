@@ -68,6 +68,9 @@
 | 43 | `bld-0043` | **Zoverions** | `AXIOM-MESH`：intent→policy plan→approved effects→加密链接证据；问 intent vs effect 绑定 + 可否反转 | 2026-09-24 | [disc#1819](https://github.com/Zoverions/AXIOM-MESH/discussions/1819) |
 | 54 | `bld-0054` | **Mindburn-Labs** | `helm-ai-kernel`：fail-closed 执行防火墙 + signed receipts + EvidencePacks 离线核验；**逐字同频我们的 seam#8**（收据完整性 `integrity_valid` 与签名者信任 `signer_trusted` 分作两裁）；问“权威绑定从哪来” | 2026-09-24 | [disc#978](https://github.com/orgs/Mindburn-Labs/discussions/978) |
 | 55 | `bld-0055` | **DanceNitra** | `inspeximus`：agent 记忆“改一次已知、旧值退休”（**逐字同频我们的 append-only + supersede**）+ verifiable erasure；问 supersede 与 erasure 如何在一条日志共存、witness 是谁 | 2026-09-24 | [disc#34](https://github.com/DanceNitra/inspeximus/discussions/34) |
+| 66 | `bld-0066` | **Aliipou** | `decision-os-min`：signed action-bound decisions + hosted effect mediation + replay resistance；问 observed effect 如何绑回预签 decision、第三方能否不信任 mediator 独立重算绑定 | 2026-09-24 | [disc#5](https://github.com/Aliipou/decision-os-min/discussions/5) |
+| 67 | `bld-0067` | **sunilp** | `aip`（IETF Internet-Draft）：可验证可委托的 agent 身份（MCP/A2A，UCAN 式）；问 invocation 如何绑到 delegation chain、根钥轮换后绑定是否还在 | 2026-09-24 | [disc#6](https://github.com/sunilp/aip/discussions/6) |
+| 68 | `bld-0068` | **PerryLink** | `dsh-research-report`：content-addressed 证据账本，claim-snapshot 绑定 + tamper-evident；问源变更时 supersede 还是 invalidate、merkle receipt 证的是 retrieved(effect) 还是 asserted(intent) | 2026-09-24 | [disc#10](https://github.com/PerryLink/dsh-research-report/discussions/10) |
 
 ## 五、已观察 / Observed (`👁 seen, not contacted`)
 
@@ -114,6 +117,17 @@
 | 63 | `bld-0063` | **naulonapp** | `naulon`：agentic web 的按读付费 toll（x402/USDC nanopayment，归因即分成规则） | 2026-09-24 |
 | 64 | `bld-0064` | **Vortx-AI** | `emem`：物理世界的机器维护外部记忆（content-addressed + ed25519 + transparency log + 确定性） | 2026-09-24 |
 | 65 | `bld-0065` | **Luminous-Dynamics** | `mycelix`：Holochain 上的分形治理 CivOS（身份/governance） | 2026-09-24 |
+| 69 | `bld-0069` | **Vadale** | `project-guardian`：本地用户态 agent-agnostic 防火墙，中介 agent 动作（policy/audit/human-in-the-loop） | 2026-09-24 |
+| 70 | `bld-0070` | **benseverndev-oss** | `goldenmatch`：实体消解喂给持久身份层（按 identity 去重） | 2026-09-24 |
+| 71 | `bld-0071` | **aks129** | `HealthClawGuardrails`：agent 与 FHIR 之间的护栏（PHI 脱敏 / 不可变审计 / step-up 认证） | 2026-09-24 |
+| 72 | `bld-0072` | **accensa** | `accensa-contracts`：Soroban 链上收据锚定 + 商户退款金库 | 2026-09-24 |
+| 73 | `bld-0073` | **Stellar-VaultLink** | `invofi`：Stellar Soroban 上链发票融资 + escrow | 2026-09-24 |
+| 74 | `bld-0074` | **legend-esc** | `carbonchain`：Soroban 问责 / 审批（tokenized carbon 发行-交易-注销） | 2026-09-24 |
+| 75 | `bld-0075` | **Zahanturel** | `adtp`：agent 密码学身份 + 委托（UCAN 链、RESTRICT 模式收窄） | 2026-09-24 |
+| 76 | `bld-0076` | **giselleevita** | `agent-security-gate`：OPA/Rego 策略门 + 审批，执行前拦截不安全 tool call | 2026-09-24 |
+| 77 | `bld-0077` | **LegionForge** | `guardian`：agent 安全层，阻断 prompt injection / tool tampering / 失控 | 2026-09-24 |
+| 78 | `bld-0078` | **nohn3043-arch** | `second-perspective`（NOMOS）：可审计决策编排层，确定性基座 | 2026-09-24 |
+| 79 | `bld-0079` | **jposluns** | `grc_library`：治理/风险/合规（GRC）文档库 | 2026-09-24 |
 
 ---
 
