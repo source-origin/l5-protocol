@@ -64,6 +64,8 @@
 | 19 | `bld-0019` | **preloop** | agent 控制面：预算 / 人类批准 / 审计轨迹 | 2026-09-24 | [disc#938](https://github.com/preloop/preloop/discussions/938) |
 | 20 | `bld-0020` | **emiliaprotocol** | authority control plane + authorization-receipts + exact-action | 2026-09-24 | [repo](https://github.com/emiliaprotocol/emilia-protocol) |
 | 21 | `bld-0021` | **ariffazil** | `arifOS`：judge-before-execute + VAULT999 receipts | 2026-09-24 | [repo](https://github.com/ariffazil/arifOS) |
+| 42 | `bld-0042` | **cirwel** | `unitares`：长时程 agent 问责基建（identity / claim / evidence / review / outcome / reconstruction）；问「记录者亦裁判」缝隙 | 2026-09-24 | [disc#2420](https://github.com/cirwel/unitares/discussions/2420) |
+| 43 | `bld-0043` | **Zoverions** | `AXIOM-MESH`：intent→policy plan→approved effects→加密链接证据；问 intent vs effect 绑定 + 可否反转 | 2026-09-24 | [disc#1819](https://github.com/Zoverions/AXIOM-MESH/discussions/1819) |
 
 ## 五、已观察 / Observed (`👁 seen, not contacted`)
 
@@ -90,6 +92,16 @@
 | 38 | `bld-0038` | **SeierkDev** | `Axon`（09-19 候选池） | 2026-09-19 |
 | 39 | `bld-0039` | **mnemox-ai** | `AgentRelay`（09-19 候选池） | 2026-09-19 |
 | 40 | `bld-0040` | **daydreamsai** | `lucid-agents`（09-19 候选池） | 2026-09-19 |
+| 44 | `bld-0044` | **b7n0de** | `proofbundle`：离线可核验证据包（RFC 6962 透明日志 / merkle / receipts）；"integrity, not truth" | 2026-09-24 |
+| 45 | `bld-0045` | **sattyamjjain** | `ferrumdeck`：in-path 执行强制 + hash-chained 审计 + 预算/批准门；自带假阳率与分母 | 2026-09-24 |
+| 46 | `bld-0046` | **mishrasanjeev** | `grantex`：agent 身份/授权/审计基建（"OAuth moment"） | 2026-09-24 |
+| 47 | `bld-0047` | **YugantM** | `hvtracker`：独立、基于证据的 agent/MCP 信任注册表 | 2026-09-24 |
+| 48 | `bld-0048` | **basilisk-labs** | `agentplane`：git-native 批准计划 + 可审证据 | 2026-09-24 |
+| 49 | `bld-0049` | **A3S-Lab** | `Power`：可验证执行 + TEE + canonical receipts | 2026-09-24 |
+| 50 | `bld-0050` | **HelloVIMS** | `Agent-NFT`：ERC-8004 身份 + EIP-712/EIP-3009 x402 结算 | 2026-09-24 |
+| 51 | `bld-0051` | **kychee-com** | `run402`：agent 后端基建，x402/MPP 计费 | 2026-09-24 |
+| 52 | `bld-0052` | **Its-fortunatefolly** | `HubVibe`：machine-payable work（HTTP 402），per-job receipt | 2026-09-24 |
+| 53 | `bld-0053` | **Dragonmonk111** | `junoclaw`：可验证自治 + 链上真值市场 + 工作史 attestation | 2026-09-24 |
 
 ---
 
