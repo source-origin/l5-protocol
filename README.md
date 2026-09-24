@@ -1,5 +1,7 @@
 # ORIGIN L5 · Agent Settlement Protocol
 
+[![ci](https://github.com/source-origin/l5-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/source-origin/l5-protocol/actions/workflows/ci.yml)
+
 > **The settlement layer for the AI-agent economy — open, community-owned.**
 > 为 AI 智能体经济设计的清算与结算层 · 开源、归属社区。
 
