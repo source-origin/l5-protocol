@@ -29,11 +29,11 @@
 | M3 | MEDIUM | `AgentEscrow` channel voucher not domain-bound; no low-s | ✅ fixed | `23584042d38` |
 | M4 | MEDIUM | `AgentAgreement(V3)._verifyEIP712Signature` hand-rolled ecrecover, no low-s | ✅ fixed | `23584042d38` |
 | H1 | HIGH | `L5x402` settled receipts are non-disputable | ✅ resolved by design (below) | — |
-| M1 | MEDIUM | single-owner authority → multisig + timelock | ◐ code half shipped (`Ownable2Step`); ops pending | `L5Ownership.t.sol` |
+| M1 | MEDIUM | single-owner authority → multisig + timelock | ✅ resolved (2-of-3 Safe + 48h timelock) | `L5Ownership.t.sol` · `L5Governance.t.sol` |
 | M2 | MEDIUM | `L5Delegation.spend` debit-semantics | ✅ resolved (draws the delegator's budget) | `L5Delegation.t.sol` |
 | M5 | MEDIUM | `YUAN` mint centralization | ✅ fixed (Foundation issuance caps) | `L5MintPolicy.t.sol` |
 
-Tests: **102 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9).
+Tests: **112 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9), `L5Governance.t.sol` (10).
 
 ---
 
@@ -150,14 +150,26 @@ blocks the spend even within cap).
 
 ---
 
+## 5·3. Decision — M1: authority moves to a 2-of-3 Safe behind a 48h timelock
+
+The owner's ruling (2026-09-25): **threshold 2-of-3, timelock delay 48h**, applied **uniformly** to
+every privileged path (no "config-only = instant" fast-path — a silent faster path is exactly what a
+reviewer looks for). The code half was already shipped (`Ownable2Step` on all 7 ownable contracts);
+the operational half now ships as [`script/DeployGovernance.s.sol`](../script/DeployGovernance.s.sol) —
+a `TimelockController(minDelay = 48h, proposers = [Safe], executors = [Safe], admin = 0)` — plus the
+governance regression `test/L5Governance.t.sol`. With `admin = 0` there is **no fast-path key**: the
+timelock administers itself, so even a role change must be timelocked. Rationale, residual
+assumptions (the Safe's three keys must be independent humans; no emergency bypass — the 48h window
+*is* the defense), and the handover runbook are in [`GOVERNANCE-M1.md`](GOVERNANCE-M1.md).
+
+*Regression:* `L5Governance.t.sol` (10) — the operation is not ready before 48h and ready after; a
+single approval is insufficient (2-of-3); a signer EOA holds no role and cannot schedule; `admin = 0`
+leaves no fast-path key; and the two-step ownership handover completes **only** through the timelock.
+
+---
+
 ## 6. Known open items (disclosed, not hidden)
 
-- **M1 · single-owner authority.** Every privileged path is `onlyOwner`. That is a strict improvement
-  over "no check", but it is a centralization point. **Code half shipped:** `Ownable` → `Ownable2Step`
-  on all 7 ownable contracts, so a privileged handover completes only when the incoming owner
-  explicitly accepts (a wrong-address transfer can no longer brick admin); regression `L5Ownership.t.sol`.
-  **Remaining (operational, owner's call):** point the owner at a multisig + `TimelockController` —
-  forward-compatible, no further code change. See [`GOVERNANCE-M1.md`](GOVERNANCE-M1.md).
 - **M6 · documented integration hooks are not wired.** `L5Delegation.identityContract` /
   `.escrowContract` and `L5x402.identityContract` / `.escrowContract` are settable (`onlyOwner` /
   `onlyAdmin`) but **never read** — the AgentIdentity / AgentEscrow integration the comments describe
@@ -183,7 +195,7 @@ None of these are silent: they are listed here so a reviewer can weigh them rath
 git clone --recursive https://github.com/source-origin/l5-protocol.git
 cd l5-protocol
 forge fmt --check      # clean
-forge test             # 102 passed, 0 failed
+forge test             # 112 passed, 0 failed
 ```
 
 Hostile-case discipline: every negative test in `L5Adversarial.t.sol` / `L5AccessControl.t.sol`
