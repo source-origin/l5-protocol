@@ -39,7 +39,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 | **YUAN.sol** | ORIGIN native token | settlement unit for agent value flow |
 | **X402FacilitatorAdapter.sol** | x402 → L5x402 facilitator adapter | maps an x402 `exact` payload to a receipt; the `nonce` becomes the `requestId` (shared join key) |
 
-**Layout:** `src/` (9 contracts) · `test/` (12 suites / 100 tests) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
+**Layout:** `src/` (9 contracts) · `test/` (12 suites / 102 tests) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
 
 **Audit note:** contracts are a work-in-progress research-grade implementation. Do **not** use with real funds without a professional audit. A dated record of our own findings and fixes is kept in [`docs/SELF-AUDIT-2026-09-25.md`](docs/SELF-AUDIT-2026-09-25.md); how to report a vulnerability privately is in [`SECURITY.md`](SECURITY.md).
 
@@ -47,10 +47,10 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 
 ## 🧪 Tests (`test/`)
 
-Foundry suite — **100 tests, all passing** (`forge test`):
+Foundry suite — **102 tests, all passing** (`forge test`):
 
 - `L5Core.t.sol` (15) — identity, agreement + escrow lifecycle, payment channels, reputation
-- `L5Delegation.t.sol` (13) — delegated authority, revocation, boundary attestation
+- `L5Delegation.t.sol` (15) — delegated authority, revocation, boundary attestation; a delegated spend draws the delegator's budget within the policy caps (M2)
 - `L5x402.t.sol` (11) — payment-requirement verification, receipt evidence, replay protection
 - `L5x402Adapter.t.sol` (5) — x402 facilitator adapter round-trip (on-chain token settles; external rail e.g. Nano stays Pending)
 - `L5Finality.t.sol` (6) — receipt finality / Boundary rule (auto vs adjudicated vs post-hoc verdict; reference direction)
@@ -78,7 +78,7 @@ python demo/tests/test_l5_offchain.py         # off-chain test suite
 ```bash
 git submodule update --init --recursive   # pins forge-std + openzeppelin-contracts
 forge build --sizes
-forge test -vvv                            # expect: 100 passed, 0 failed
+forge test -vvv                            # expect: 102 passed, 0 failed
 ```
 
 ---

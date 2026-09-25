@@ -30,10 +30,10 @@
 | M4 | MEDIUM | `AgentAgreement(V3)._verifyEIP712Signature` hand-rolled ecrecover, no low-s | ✅ fixed | `23584042d38` |
 | H1 | HIGH | `L5x402` settled receipts are non-disputable | ✅ resolved by design (below) | — |
 | M1 | MEDIUM | single-owner authority → multisig + timelock | ◐ code half shipped (`Ownable2Step`); ops pending | `L5Ownership.t.sol` |
-| M2 | MEDIUM | `L5Delegation.spend` debit-semantics | ⏳ open (product) | — |
+| M2 | MEDIUM | `L5Delegation.spend` debit-semantics | ✅ resolved (draws the delegator's budget) | `L5Delegation.t.sol` |
 | M5 | MEDIUM | `YUAN` mint centralization | ✅ fixed (Foundation issuance caps) | `L5MintPolicy.t.sol` |
 
-Tests: **100 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9).
+Tests: **102 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9).
 
 ---
 
@@ -132,6 +132,24 @@ cannot be exceeded; lowering the cap blocks further minting; cap and rate are ow
 
 ---
 
+## 5·2. Decision — M2: a delegated spend draws the **delegator's** budget
+
+`L5Delegation.spend` previously did `safeTransferFrom(msg.sender, ...)` (= the delegate's own funds).
+That made the delegator's whole apparatus — caps, `allowedPayTo`, `resourcePattern`, `revoke` —
+control nothing but a self-imposed limit on someone else's money. The maintainer's ruling:
+**the delegator funds, the delegate triggers.** `spend` now draws `d.delegator`, so the effective
+authority is the **intersection of the delegator's allowance AND the delegation's caps** — the same
+"allowance AND policy" shape as the hardened x402 gate (H2), and the same reading that dissolves the
+M7 two-ledger ambiguity. Rationale: ERC-7710 (authority over the delegator's assets), L0
+(`revocable` is only meaningful over the human's own budget), and `allowedPayTo`'s anti-diversion
+intent. See [`DELEGATION-POLICY.md`](DELEGATION-POLICY.md).
+
+*Regression:* `L5Delegation.t.sol` — `test_SpendDebitsDelegatorBudgetNotDelegate` (the delegate's own
+balance is untouched), `test_SpendRequiresDelegatorAllowance` (revoking the delegator's approval
+blocks the spend even within cap).
+
+---
+
 ## 6. Known open items (disclosed, not hidden)
 
 - **M1 · single-owner authority.** Every privileged path is `onlyOwner`. That is a strict improvement
@@ -151,10 +169,9 @@ cannot be exceeded; lowering the cap blocks further minting; cap and rate are ow
   `L5Delegation.Delegation.spentThisPeriod` (consumed at `spend`). If both are used for the same
   logical policy, the effective cap is the *sum*, not either one. This is a design seam, not a bug in
   either contract; unifying the two (one authoritative budget, one read view) is a scoped change to
-  make before real funds.
-- **M2 · `L5Delegation.spend` debit semantics.** Whether a delegated spend draws the delegate's own
-  funds or the delegator's budget is a **product-semantics** decision; the contracts must match the
-  intended one. *Product decision — pending owner sign-off.*
+  make before real funds. *M2's resolution sharpened this:* both counters now mean the same thing
+  (*the delegator pays, within the policy*), which is what makes one authoritative budget the
+  natural end state rather than a choice between two models.
 
 None of these are silent: they are listed here so a reviewer can weigh them rather than discover them.
 
@@ -166,7 +183,7 @@ None of these are silent: they are listed here so a reviewer can weigh them rath
 git clone --recursive https://github.com/source-origin/l5-protocol.git
 cd l5-protocol
 forge fmt --check      # clean
-forge test             # 100 passed, 0 failed
+forge test             # 102 passed, 0 failed
 ```
 
 Hostile-case discipline: every negative test in `L5Adversarial.t.sol` / `L5AccessControl.t.sol`

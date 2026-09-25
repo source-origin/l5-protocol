@@ -21,10 +21,9 @@ contract L5DelegationTest is Test {
     function setUp() public {
         del = new L5Delegation();
         yuan = new MockERC20();
-        // mint 给 delegate（spend 从 msg.sender=delegate 转出）
-        yuan.mint(delegate, 1000 ether);
-        // approve
-        vm.prank(delegate);
+        // M2 裁定：委托花【委托方】的预算 —— mint 给 delegator，并由 delegator approve
+        yuan.mint(delegator, 1000 ether);
+        vm.prank(delegator);
         yuan.approve(address(del), type(uint256).max);
     }
 
@@ -73,7 +72,7 @@ contract L5DelegationTest is Test {
         delId = _createDelegation();
         uint256 balBefore = yuan.balanceOf(payTo);
 
-        // delegate 调用 spend（token 从 delegate 转给 payTo）
+        // delegate 调用 spend（token 从 delegator 预算转给 payTo）
         vm.prank(delegate);
         uint256 remaining = del.spend(delId, payTo, 5 ether, "api:get-price");
 
@@ -82,6 +81,31 @@ contract L5DelegationTest is Test {
         L5Delegation.Delegation memory d = del.getDelegation(delId);
         assertEq(d.spentThisPeriod, 5 ether);
         assertEq(d.requestCount, 1);
+    }
+
+    /// @notice M2：结算扣的是【委托方】的预算，delegate 自有资金不动。
+    function test_SpendDebitsDelegatorBudgetNotDelegate() public {
+        delId = _createDelegation();
+        yuan.mint(delegate, 100 ether); // delegate 自己也有钱（不应被动用）
+        uint256 delegatorBefore = yuan.balanceOf(delegator);
+        uint256 delegateBefore = yuan.balanceOf(delegate);
+
+        vm.prank(delegate);
+        del.spend(delId, payTo, 5 ether, "api:get-price");
+
+        assertEq(yuan.balanceOf(delegator), delegatorBefore - 5 ether, "delegator pays");
+        assertEq(yuan.balanceOf(delegate), delegateBefore, "delegate own funds untouched");
+    }
+
+    /// @notice M2：委托方撤销/收回 allowance 后，delegate 连委托额度内也花不出去。
+    ///   与 L5x402 的「allowance 且 policy」一致 —— 双重门。
+    function test_SpendRequiresDelegatorAllowance() public {
+        delId = _createDelegation();
+        vm.prank(delegator);
+        yuan.approve(address(del), 0); // 委托方收回授权
+        vm.prank(delegate);
+        vm.expectRevert();
+        del.spend(delId, payTo, 1 ether, "api:get-price");
     }
 
     function test_SpendExceedsPerRequest() public {

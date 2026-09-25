@@ -13,8 +13,10 @@
 //   本合约实现 ERC-7710 委托原语 + AgentSpendPolicy 数据结构。
 //
 // 核心设计：
-//   1. Delegation = 委托方(delegator) 授权 被委托方(delegate)
-//      在限定范围内调用某个能力(能力=武器库模块)
+//   1. Delegation = 委托方(delegator) 出资并授权 被委托方(delegate)
+//      在限定范围内调用某个能力(能力=武器库模块)。
+//      ⚠ M2 裁定：委托花的是【委托方】的预算（ERC-7710：授权 = 对委托方资产的授权）
+//      delegate 仅触发，资金从 delegator 出 → delegator 需事先 approve 本合约。
 //   2. AgentSpendPolicy 数据结构和 internet-court 一致：
 //      delegator / delegate / token / allowedPayTo / maxPerRequest /
 //      maxPerPeriod / period / validUntil / revocable
@@ -71,7 +73,7 @@ contract L5Delegation is Ownable2Step, ReentrancyGuard {
     /// @notice 委托策略（对齐 internet-court AgentSpendPolicy）
     struct Delegation {
         bytes32 id; // 委托唯一 ID
-        address delegator; // 委托方（能力提供方/授权人）
+        address delegator; // 委托方（出资人 / 授权人；人类最高权威）
         address delegate; // 被委托方（调用智能体）
         address token; // 结算代币（YUAN）
         address allowedPayTo; // 限定收款方（=能力方，防转付）
@@ -176,8 +178,9 @@ contract L5Delegation is Ownable2Step, ReentrancyGuard {
 
     /**
      * @notice 创建一笔委托（ERC-7710 委托原语）
-     * @dev delegator 授权 delegate 在限定范围内调用能力
-     * 若注入 identity 合约，则校验双方必须是已注册 Agent
+     * @dev delegator 出资并授权 delegate 在限定范围内调用能力。
+     *      M2 裁定：结算从 delegator 扣款（delegator 需 approve 本合约）。
+     *      若注入 identity 合约，则校验双方必须是已注册 Agent
      */
     function createDelegation(
         address _delegate,
@@ -240,6 +243,10 @@ contract L5Delegation is Ownable2Step, ReentrancyGuard {
 
     /**
      * @notice 被委托方调用能力并结算（核心：贡献结算）
+     * @dev M2 裁定：本次结算从【委托方 delegator】的预算中支付给能力方
+     *      （ERC-7710 语义：委托 = 对委托方资产的授权）。delegate 仅触发，
+     *      不改动 delegate 自有资金。delegator 需已 approve 本合约；
+     *      生效约束 = delegator 的 allowance 且 委托上限（双重门）。
      * @param id 委托ID
      * @param _payTo 实际收款方（必须 == allowedPayTo）
      * @param _amount 本次结算金额
@@ -268,8 +275,11 @@ contract L5Delegation is Ownable2Step, ReentrancyGuard {
         // 3. 周期/总量检查
         require(d.spentThisPeriod + _amount <= d.maxPerPeriod, "L5D: exceeds period cap");
 
-        // 4. 转账结算（YUAN 从这里流给能力方）
-        IERC20(d.token).safeTransferFrom(msg.sender, _payTo, _amount);
+        // 4. 转账结算 —— M2 裁定：委托花的是【委托方】的预算
+        //    （ERC-7710 语义：委托 = 对委托方资产的授权）。delegate 只是触发者，
+        //    资金从 delegator 出，delegator 需事先 approve 本合约。
+        //    这与 L5x402 的「allowance 且 policy」双门一致。
+        IERC20(d.token).safeTransferFrom(d.delegator, _payTo, _amount);
 
         // 5. 记账
         d.spentThisPeriod += _amount;
