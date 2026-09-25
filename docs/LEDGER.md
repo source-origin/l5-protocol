@@ -3,7 +3,7 @@
 > **这是一本追加式（append-only）名册。它的职责只有一个：记住每一个碰过这条边界的人——早期的、现在的、后来的。**
 > 记账不靠申请，靠**可独立核验的贡献**（见 [`CONTRIBUTION-SPEC.md`](CONTRIBUTION-SPEC.md)）。
 
-**状态：`v0 — seeded 2026-09-24`。** 机器可读版：[`../ledger.json`](../ledger.json)。校验：`node tools/ledger.cjs check`。
+**状态：`v0 — seeded 2026-09-24`。** 机器可读版：[`../ledger.json`](../ledger.json)。校验：`node tools/ledger.cjs check [--verify]`（`--verify` 会取回 URL 形式的 `signing_key` 并验签）。
 
 ---
 
@@ -12,7 +12,7 @@
 1. **只增不改。** 条目一旦落账，永不重写；过时用 `superseded_by` 指向新条目，原件保留。`id` 单调递增（`bld-0001`…）。
 2. **每条都带得开的证据。** 每个条目必须引用一个第三方能打开的东西（issue / discussion / commit / PR / 链上 tx）。不能只有「我认识他」。**若对方表面已失联（改名/删号），标 `reachable:false` 并在 `note` 说明**——记录保留，不硬认归属。
 3. **记住 ≠ 计账。** 被引（convergence）是「记住」；**落了一条可核验的贡献收据**（`counted: true`）才是「计账」。两者分开记。
-   - **绑定规则（关键）：** 外部条目的 `counted` **只在该条目自己公布的密钥（`signing_key`）签署的收据上翻真——绝不在账本保管人自己记录的该条目言辞上翻真。** 否则「记住 → 计账」的距离只有一次 push。（此条由 scvd 指认，采纳。）
+   - **绑定规则（关键，已由代码强制）：** 外部条目的 `counted` **只在该条目自己公布的密钥（`signing_key`）签署的收据上翻真——绝不在账本保管人自己记录的该条目言辞上翻真。** 校验器不是查字段，是**验签**：`counted:true` 的外部条目必须同时给出 `receipt_ref`、`signing_key`、`receipt`（收据字节）与 `receipt_sig`（对该字节的 base64 Ed25519 签名），`check` 用 `crypto.verify()` 断言通过才放行。**字段存在不算数**——内联 JWK 离线即验；`signing_key` 是 URL 时离线一律判失败，须 `check --verify` 取回并校验。否则「记住 → 计账」的距离只有一次 push。（此条由 scvd 指认，采纳；验签由 scvd 反例推动落地。）
 4. **不声明背书。** 出现在这里只代表「他在同一条边界上」，不代表他支持本仓、代币或路线。
 5. **去重按身份。** 一人一条；跨仓库/多线程合并到同一 `identity`。
 
