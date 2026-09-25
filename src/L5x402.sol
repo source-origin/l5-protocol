@@ -30,6 +30,7 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -38,7 +39,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @notice x402 支付轨的链上记账+收据+快照层
  * @dev 与 L5Delegation 复用同一委托策略，x402 只做记账审计
  */
-contract L5x402 is Ownable, ReentrancyGuard {
+contract L5x402 is Ownable2Step, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
 

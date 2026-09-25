@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title YUAN — 源·ORIGIN 生态服务凭证
@@ -11,7 +12,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// @dev SYMBOL 刻意用 4 字母 + 2x6 = 12 位, 满足常见交易所位数要求
 ///      功能边界：仅用于购买生态内 AI 服务 —— 属「生态积分/服务凭证」定义,
 ///      非投资/投机工具。公开流通与监管边界在项目治理层约束。
-contract YUAN is ERC20, Ownable, ReentrancyGuard {
+contract YUAN is ERC20, Ownable2Step, ReentrancyGuard {
     /* ============ 常量 ============ */
     /// @notice 最大供应量 10亿 YUAN（18位小数对应 1e18 * 1e9）
     uint256 public constant MAX_SUPPLY = 1_000_000_000 * 1e18;

@@ -24,6 +24,7 @@ pragma solidity ^0.8.28;
 
 import "./AgentAgreement.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -32,7 +33,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @notice AI Agent 之间的链上托管支付合?+
  * @dev 与AgentAgreement紧密集成，通过agreementId关联
  */
-contract AgentEscrow is Ownable, ReentrancyGuard {
+contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     //  ══════════════════════════════════════════════════
     //  ENUMS
     // ══════════════════════════════════════════════════

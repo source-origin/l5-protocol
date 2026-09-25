@@ -39,7 +39,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 | **YUAN.sol** | ORIGIN native token | settlement unit for agent value flow |
 | **X402FacilitatorAdapter.sol** | x402 → L5x402 facilitator adapter | maps an x402 `exact` payload to a receipt; the `nonce` becomes the `requestId` (shared join key) |
 
-**Layout:** `src/` (9 contracts) · `test/` (10 suites / 84 tests) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
+**Layout:** `src/` (9 contracts) · `test/` (11 suites / 91 tests) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
 
 **Audit note:** contracts are a work-in-progress research-grade implementation. Do **not** use with real funds without a professional audit. A dated record of our own findings and fixes is kept in [`docs/SELF-AUDIT-2026-09-25.md`](docs/SELF-AUDIT-2026-09-25.md); how to report a vulnerability privately is in [`SECURITY.md`](SECURITY.md).
 
@@ -47,7 +47,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 
 ## 🧪 Tests (`test/`)
 
-Foundry suite — **84 tests, all passing** (`forge test`):
+Foundry suite — **91 tests, all passing** (`forge test`):
 
 - `L5Core.t.sol` (15) — identity, agreement + escrow lifecycle, payment channels, reputation
 - `L5Delegation.t.sol` (13) — delegated authority, revocation, boundary attestation
@@ -58,6 +58,7 @@ Foundry suite — **84 tests, all passing** (`forge test`):
 - `L5AccessControl.t.sol` (8) — unauthorized-privileged + reentrancy regressions (C1–C4)
 - `L5x402Hardening.t.sol` (9) — on-chain spend-cap enforcement, domain-bound evidence, finality on unmoved value (H2–H4)
 - `L5SignatureHardening.t.sol` (5) — domain-bound channel vouchers + canonical low-s across channel & agreement EIP-712 (M3–M4)
+- `L5Ownership.t.sol` (7) — two-step ownership: a privileged handover completes only on explicit acceptance (M1)
 - `AgentAgreementV3Checkpoint.t.sol` (6) — crash-recoverable checkpoint execution
 
 (`MockERC20.t.sol` provides the test token used by the delegation/x402 suites.)
@@ -76,7 +77,7 @@ python demo/tests/test_l5_offchain.py         # off-chain test suite
 ```bash
 git submodule update --init --recursive   # pins forge-std + openzeppelin-contracts
 forge build --sizes
-forge test -vvv                            # expect: 84 passed, 0 failed
+forge test -vvv                            # expect: 91 passed, 0 failed
 ```
 
 ---

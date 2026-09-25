@@ -29,6 +29,7 @@
 pragma solidity ^0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /// @notice Minimal surface of L5x402 this adapter needs.
 interface IL5x402Record {
@@ -58,7 +59,7 @@ contract ExternalAssetMarker {
 
 /// @title X402FacilitatorAdapter
 /// @notice Maps an x402 `exact` payload to an L5x402 receipt.
-contract X402FacilitatorAdapter is Ownable {
+contract X402FacilitatorAdapter is Ownable2Step {
     /// @notice The subset of the x402 `exact` payload this adapter consumes.
     /// @dev Field names mirror the x402 authorization object so the mapping in
     ///      docs/INTEROP-x402.md can be followed line by line.

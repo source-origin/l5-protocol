@@ -7,6 +7,7 @@
 pragma solidity ^0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /// @notice 从 CreditScore 视角读取 AgentIdentity：仅声明需要读取的字段视图与 getter
 /// @dev 字段视图顺序必须与 AgentIdentity.Agent 逐一对应，ABI 才能正确解码
@@ -35,7 +36,7 @@ interface IAgentIdentity {
 /// @notice 信用分 = 任务成功率×W1 + 质量×W2 + 稳定性×W3 + 贡献×W4 - 惩罚(slash/投诉)
 ///         信用分直接决定智能体可调动的 YUAN 上限 → 「高信用→更多机会→更高收入→更高信用」正循环
 /// @dev 不修改 AgentIdentity；通过 IAgentIdentity interface 读其 agents() public getter
-contract CreditScore is Ownable {
+contract CreditScore is Ownable2Step {
     /* ============ 能力=只读引用（接口已提到文件顶层） ============ */
     /* ============ 常量 ============ */
     uint256 public constant SCORE_MAX = 10000; // 信用分上限 0-10000

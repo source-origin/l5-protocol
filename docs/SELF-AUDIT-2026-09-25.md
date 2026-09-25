@@ -29,11 +29,11 @@
 | M3 | MEDIUM | `AgentEscrow` channel voucher not domain-bound; no low-s | ✅ fixed | `23584042d38` |
 | M4 | MEDIUM | `AgentAgreement(V3)._verifyEIP712Signature` hand-rolled ecrecover, no low-s | ✅ fixed | `23584042d38` |
 | H1 | HIGH | `L5x402` settled receipts are non-disputable | ✅ resolved by design (below) | — |
-| M1 | MEDIUM | single-owner authority → multisig + timelock | ⏳ open (governance) | — |
+| M1 | MEDIUM | single-owner authority → multisig + timelock | ◐ code half shipped (`Ownable2Step`); ops pending | `L5Ownership.t.sol` |
 | M2 | MEDIUM | `L5Delegation.spend` debit-semantics | ⏳ open (product) | — |
 | M5 | MEDIUM | `YUAN` mint centralization | ⏳ open (governance) | — |
 
-Tests: **84 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6).
+Tests: **91 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7).
 
 ---
 
@@ -115,9 +115,23 @@ the reentrancy attack is paid exactly once.
 ## 6. Known open items (disclosed, not hidden)
 
 - **M1 · single-owner authority.** Every privileged path is `onlyOwner`. That is a strict improvement
-  over "no check", but it is a centralization point. Target: **multisig + timelock**, and re-wiring
-  the stopgap `onlyOwner` locks to their intended callers (contribution clock / DAO). *Governance
-  change — needs a design, not a patch.*
+  over "no check", but it is a centralization point. **Code half shipped:** `Ownable` → `Ownable2Step`
+  on all 7 ownable contracts, so a privileged handover completes only when the incoming owner
+  explicitly accepts (a wrong-address transfer can no longer brick admin); regression `L5Ownership.t.sol`.
+  **Remaining (operational, owner's call):** point the owner at a multisig + `TimelockController` —
+  forward-compatible, no further code change. See [`GOVERNANCE-M1.md`](GOVERNANCE-M1.md).
+- **M6 · documented integration hooks are not wired.** `L5Delegation.identityContract` /
+  `.escrowContract` and `L5x402.identityContract` / `.escrowContract` are settable (`onlyOwner` /
+  `onlyAdmin`) but **never read** — the AgentIdentity / AgentEscrow integration the comments describe
+  is not implemented. No exploit (nothing reads them), but it is a *truthfulness* gap a reviewer would
+  name: the accessors exist so they are not dead code, yet they grant no behaviour. Tracked as a
+  scoped follow-up to either implement the checks or remove the hooks; **not** silently dropped.
+- **M7 · two spend ledgers for one logical policy.** An x402 policy's budget is tracked in **two
+  independent counters**: `L5x402.SpendSnapshot.spentPeriod` (consumed at `recordReceipt`) and
+  `L5Delegation.Delegation.spentThisPeriod` (consumed at `spend`). If both are used for the same
+  logical policy, the effective cap is the *sum*, not either one. This is a design seam, not a bug in
+  either contract; unifying the two (one authoritative budget, one read view) is a scoped change to
+  make before real funds.
 - **M2 · `L5Delegation.spend` debit semantics.** Whether a delegated spend draws the delegate's own
   funds or the delegator's budget is a **product-semantics** decision; the contracts must match the
   intended one. *Product decision — pending owner sign-off.*
@@ -135,7 +149,7 @@ None of these are silent: they are listed here so a reviewer can weigh them rath
 git clone --recursive https://github.com/source-origin/l5-protocol.git
 cd l5-protocol
 forge fmt --check      # clean
-forge test             # 84 passed, 0 failed
+forge test             # 91 passed, 0 failed
 ```
 
 Hostile-case discipline: every negative test in `L5Adversarial.t.sol` / `L5AccessControl.t.sol`
