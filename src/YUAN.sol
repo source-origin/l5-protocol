@@ -23,8 +23,18 @@ contract YUAN is ERC20, Ownable2Step, ReentrancyGuard {
     /// @notice 兑换率登记：一个不可变锚定值, 由治理调整
     uint256 public yuanPerServiceUnit; // 1 基准服务单元 = N YUAN (可调)
 
+    /// @notice M5: each provider's issuance ceiling, set by the Foundation (owner).
+    ///         Issuance is a monetary-policy lever: the Foundation raises/lowers a
+    ///         provider's cap as the market requires. A provider with no cap set
+    ///         (0) cannot issue at all -- fail-closed, never unlimited. MAX_SUPPLY
+    ///         remains the hard ceiling on top of this.
+    mapping(address => uint256) public providerMintCap;
+    /// @notice M5: cumulative amount already issued by each provider (against its cap).
+    mapping(address => uint256) public providerMinted;
+
     /* ============ 事件 ============ */
     event ServiceProviderSet(address indexed provider, bool enabled);
+    event ProviderMintCapSet(address indexed provider, uint256 cap);
     event AnchorRateSet(uint256 yuanPerServiceUnit);
     event ServiceIssued(address indexed provider, address indexed recipient, uint256 amount, uint256 serviceUnits);
     event ServiceBurned(address indexed holder, uint256 amount);
@@ -41,13 +51,22 @@ contract YUAN is ERC20, Ownable2Step, ReentrancyGuard {
     }
 
     /* ============ 治理 ============ */
-    /// @notice 设置生态服务商资格（仅 owner）
+    /// @notice 设置生态服务商资格（仅 owner = 源基金会）
+    /// @dev 仅开通资格不赋予发行权：还需 setProviderMintCap 设上限后该服务商才能发行。
     function setServiceProvider(address provider, bool enabled) external onlyOwner {
         serviceProviders[provider] = enabled;
         emit ServiceProviderSet(provider, enabled);
     }
 
-    /// @notice 调整锚定汇率（仅 owner, 生态成熟后交 DAO）
+    /// @notice M5: 设定某服务商的发行上限（仅 owner = 源基金会）。
+    ///         这是「按市场反应调节发行量」的杠杆：发行量由基金会选择的上限约束,
+    ///         而不是仅由 MAX_SUPPLY 约束。上限 0 = 该服务商不可发行（fail-closed）。
+    function setProviderMintCap(address provider, uint256 cap) external onlyOwner {
+        providerMintCap[provider] = cap;
+        emit ProviderMintCapSet(provider, cap);
+    }
+
+    /// @notice 调整锚定汇率（仅 owner = 源基金会, 生态成熟后交 DAO / timelock）
     function setAnchorRate(uint256 newRate) external onlyOwner {
         require(newRate > 0, "YUAN: rate zero");
         yuanPerServiceUnit = newRate;
@@ -62,6 +81,12 @@ contract YUAN is ERC20, Ownable2Step, ReentrancyGuard {
         uint256 amount = serviceUnits * yuanPerServiceUnit;
         require(amount > 0, "YUAN: zero amount");
         require(totalSupply() + amount <= MAX_SUPPLY, "YUAN: cap exceeded");
+        // M5: the Foundation bounds each provider's issuance (market-responsive policy).
+        // A provider can never mint past its cap, and an uncapped (0) provider cannot
+        // mint at all -- so sole authority over supply stays with the Foundation.
+        uint256 minted = providerMinted[msg.sender] + amount;
+        require(minted <= providerMintCap[msg.sender], "YUAN: provider cap exceeded");
+        providerMinted[msg.sender] = minted;
 
         _mint(recipient, amount);
         emit ServiceIssued(msg.sender, recipient, amount, serviceUnits);

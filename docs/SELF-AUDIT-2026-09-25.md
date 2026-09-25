@@ -31,9 +31,9 @@
 | H1 | HIGH | `L5x402` settled receipts are non-disputable | ✅ resolved by design (below) | — |
 | M1 | MEDIUM | single-owner authority → multisig + timelock | ◐ code half shipped (`Ownable2Step`); ops pending | `L5Ownership.t.sol` |
 | M2 | MEDIUM | `L5Delegation.spend` debit-semantics | ⏳ open (product) | — |
-| M5 | MEDIUM | `YUAN` mint centralization | ⏳ open (governance) | — |
+| M5 | MEDIUM | `YUAN` mint centralization | ✅ fixed (Foundation issuance caps) | `L5MintPolicy.t.sol` |
 
-Tests: **91 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7).
+Tests: **100 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9).
 
 ---
 
@@ -112,6 +112,26 @@ the reentrancy attack is paid exactly once.
 
 ---
 
+## 5·1. Decision — M5: issuance authority belongs to the Foundation
+
+`YUAN.issueService` previously let **any** whitelisted provider mint, bounded only by `MAX_SUPPLY` —
+so a single whitelisted address could print to the hard cap. The owner's ruling (2026-09-25): **the right
+to mint belongs to the 源 Foundation, and the amount issued is adjusted in response to the market.**
+
+The mechanism now in code: issuance requires **eligibility AND a Foundation-set per-provider ceiling
+AND** the hard cap. `setServiceProvider` alone grants nothing (fail-closed): until
+`setProviderMintCap(p, cap)` is called, provider `p` mints zero. The market-responsive lever is the
+cap — lowering it immediately blocks further issuance, raising it re-opens room. Issuance still only
+happens through `issueService` against **delivered service units** (no raw `owner.mint`), so the
+"no YUAN without a service" property is retained while the supply decision moves to the Foundation.
+All three levers are `onlyOwner` and route through the M1 multisig / timelock. See
+[`TOKEN-POLICY.md`](TOKEN-POLICY.md).
+
+*Regression:* `L5MintPolicy.t.sol` (9) — uncapped provider mints nothing; cap is cumulative and
+cannot be exceeded; lowering the cap blocks further minting; cap and rate are owner-only.
+
+---
+
 ## 6. Known open items (disclosed, not hidden)
 
 - **M1 · single-owner authority.** Every privileged path is `onlyOwner`. That is a strict improvement
@@ -135,9 +155,6 @@ the reentrancy attack is paid exactly once.
 - **M2 · `L5Delegation.spend` debit semantics.** Whether a delegated spend draws the delegate's own
   funds or the delegator's budget is a **product-semantics** decision; the contracts must match the
   intended one. *Product decision — pending owner sign-off.*
-- **M5 · `YUAN` mint centralization.** A whitelisted provider can mint up to a cap and the owner can
-  adjust the anchor rate. An inflation/governance risk, not a memory-safety one. *Governance — needs
-  a design.*
 
 None of these are silent: they are listed here so a reviewer can weigh them rather than discover them.
 
@@ -149,7 +166,7 @@ None of these are silent: they are listed here so a reviewer can weigh them rath
 git clone --recursive https://github.com/source-origin/l5-protocol.git
 cd l5-protocol
 forge fmt --check      # clean
-forge test             # 91 passed, 0 failed
+forge test             # 100 passed, 0 failed
 ```
 
 Hostile-case discipline: every negative test in `L5Adversarial.t.sol` / `L5AccessControl.t.sol`
