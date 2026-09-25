@@ -33,7 +33,7 @@
 | M2 | MEDIUM | `L5Delegation.spend` debit-semantics | ✅ resolved (draws the delegator's budget) | `L5Delegation.t.sol` |
 | M5 | MEDIUM | `YUAN` mint centralization | ✅ fixed (Foundation issuance caps) | `L5MintPolicy.t.sol` |
 
-Tests: **112 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9), `L5Governance.t.sol` (10).
+Tests: **122 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9), `L5Governance.t.sol` (10), `L5Fuzz.t.sol` (10).
 
 ---
 
@@ -195,12 +195,19 @@ None of these are silent: they are listed here so a reviewer can weigh them rath
 git clone --recursive https://github.com/source-origin/l5-protocol.git
 cd l5-protocol
 forge fmt --check      # clean
-forge test             # 112 passed, 0 failed
+forge test             # 122 passed, 0 failed
 ```
 
 Hostile-case discipline: every negative test in `L5Adversarial.t.sol` / `L5AccessControl.t.sol`
 must **fail closed, for the correct reason, independently** — a test that passes for the wrong
 revert string is treated as a defect.
+
+Fuzz discipline: [`L5Fuzz.t.sol`](../test/L5Fuzz.t.sol) sweeps the input domain (256 runs each) to
+assert the properties that matter — a delegated spend never exceeds its per-request or period cap
+and always draws the delegator's budget; revocation and expiry are absolute walls; a channel and an
+escrow each conserve value exactly (receiver gets the voucher, sender gets the remainder, the
+contract is drained to zero). Example-based tests pin the edges; fuzz shows the edges are not
+special.
 
 ---
 
