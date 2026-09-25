@@ -40,7 +40,9 @@ interface IL5x402Record {
         uint256 _amount,
         bytes32 _routeHash,
         bytes32 _payloadHash,
-        bytes32 _permissionHash
+        bytes32 _permissionHash,
+        uint256 _deadline,
+        bytes calldata _payerAuth
     ) external returns (bytes32 receiptId);
 }
 
@@ -66,6 +68,8 @@ contract X402FacilitatorAdapter is Ownable {
         address asset; // on-chain token address; address(0) = external rail (Nano)
         uint256 value; // x402 authorization.value -> L5x402 amount
         bytes32 nonce; // x402 authorization.nonce -> L5x402 requestId (the join key)
+        uint256 deadline; // x402 authorization.validBefore -> L5x402 _deadline
+        bytes authorization; // payer's EIP-712 signature over the canonical action (P0 #1)
     }
 
     /// @notice The L5x402 receipt/accounting layer this adapter writes into.
@@ -121,8 +125,21 @@ contract X402FacilitatorAdapter is Ownable {
 
         address token = p.asset == address(0) ? externalAsset : p.asset;
 
+        // The adapter is a pass-through: it carries the payer's authorization to
+        // L5x402, which is the only place that can validate and consume it.
         receiptId = IL5x402Record(l5x402)
-            .recordReceipt(p.nonce, p.from, p.to, token, p.value, routeHash, payloadHash, permissionHash);
+            .recordReceipt(
+                p.nonce,
+                p.from,
+                p.to,
+                token,
+                p.value,
+                routeHash,
+                payloadHash,
+                permissionHash,
+                p.deadline,
+                p.authorization
+            );
 
         emit ExactRecorded(receiptId, p.nonce, p.from, p.to, token, p.value);
     }

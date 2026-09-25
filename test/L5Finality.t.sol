@@ -9,12 +9,15 @@ import {MockERC20} from "./MockERC20.t.sol";
 /// @notice Covers the three release paths of the three-stage chain
 ///   action_ref -> release receipt -> verdict, and the reference direction:
 ///   the artifact that arrives later holds the backward reference.
+///   P0 #4: a receipt whose value has NOT moved is Open, never Final.
 contract L5FinalityTest is Test {
     L5x402 public x402;
     MockERC20 public yuan;
 
-    address public payer = address(0x1);
-    address public payee = address(0x2);
+    uint256 public payerPk = 1;
+    uint256 public payeePk = 2;
+    address public payer;
+    address public payee;
 
     bytes32 public requestId = keccak256("req-1");
     bytes32 public payloadHash = keccak256("payload-1");
@@ -22,6 +25,8 @@ contract L5FinalityTest is Test {
     bytes32 public routeHash = keccak256("POST /settle");
 
     function setUp() public {
+        payer = vm.addr(payerPk);
+        payee = vm.addr(payeePk);
         x402 = new L5x402();
         yuan = new MockERC20();
         yuan.mint(payer, 1_000e6);
@@ -33,8 +38,31 @@ contract L5FinalityTest is Test {
         yuan.approve(address(x402), type(uint256).max);
     }
 
+    function _sig(bytes32 reqId, uint256 amt, uint256 deadline) internal view returns (bytes memory) {
+        bytes32 d =
+            x402.actionDigest(reqId, payer, payee, address(yuan), amt, routeHash, payloadHash, permHash, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(payerPk, d);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _recordAt(bytes32 reqId, uint256 amt) internal returns (bytes32 id) {
+        uint256 deadline = block.timestamp + 1 days;
+        id = x402.recordReceipt(
+            reqId,
+            payer,
+            payee,
+            address(yuan),
+            amt,
+            routeHash,
+            payloadHash,
+            permHash,
+            deadline,
+            _sig(reqId, amt, deadline)
+        );
+    }
+
     function _record(uint256 amt) internal returns (bytes32 id) {
-        id = x402.recordReceipt(requestId, payer, payee, address(yuan), amt, routeHash, payloadHash, permHash);
+        id = _recordAt(requestId, amt);
     }
 
     /// Auto path: no external verdict exists -> the receipt is terminal.
@@ -104,17 +132,18 @@ contract L5FinalityTest is Test {
     function _pending(bytes32 reqId, uint256 amt) internal returns (bytes32 id) {
         vm.prank(payer);
         yuan.approve(address(x402), 0);
-        id = x402.recordReceipt(reqId, payer, payee, address(yuan), amt, routeHash, payloadHash, permHash);
+        id = _recordAt(reqId, amt);
     }
 
-    /// Review point (internet-court-skill#1): a receipt cannot be both Disputed
-    /// and Final. Entering dispute moves it into the third state explicitly,
-    /// rather than leaving a final claim standing over an open dispute window.
+    /// P0 #4: a receipt whose value has not moved is Open -- it must not be
+    /// minted Final. Entering dispute moves it into the third state explicitly.
     function test_Disputed_ReceiptIsNotFinal() public {
         bytes32 id = _pending(keccak256("d1"), 100e6);
         assertEq(uint256(x402.getReceipt(id).status), uint256(L5x402.ReceiptStatus.Pending), "pending");
         assertEq(
-            uint256(x402.getReceipt(id).finality), uint256(L5x402.ReceiptFinality.Final), "mint default is terminal"
+            uint256(x402.getReceipt(id).finality),
+            uint256(L5x402.ReceiptFinality.Open),
+            "pending mint must be Open, not Final"
         );
 
         x402.disputeReceipt(id, "post-release dispute");

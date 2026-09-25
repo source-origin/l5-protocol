@@ -63,7 +63,7 @@ struct PaymentReceipt {
 | `authorization.value` | `amount` | **1:1** (unit conversion at the facilitator: XNO → YUAN is *not* 1:1 and must be an explicit, verifiable rate — see §4). |
 | `authorization.nonce` | `requestId` | **Divergence D2.** x402's nonce is the replay key; ours is `requestId` + a derived `receiptId` duplicate-guard. The facilitator SHOULD set `nonce == requestId` so the two ledgers share one join key. |
 | `authorization.validAfter` / `validBefore` | — (not stored) | **Divergence D3.** x402 has an authorization validity window; our receipt has `timestamp` + a `status` lifecycle (settled → disputed/refunded). Timeout/dispute is handled by escrow, not by the receipt. |
-| `payload.signature` | `evidenceVerified` (via `verifyReceiptEvidence`) | **Divergence D4.** Different trust object: x402's signature *authorizes a token transfer* (EIP-3009-style); ORIGIN's is a **service-side evidence signature** over `evidenceHash` (EIP-191 `personal_sign`), recovered and checked against a declared signer. |
+| `payload.signature` | `recordReceipt(...)` caller auth (EIP-712) **and** `evidenceVerified` (via `verifyReceiptEvidence`) | **Divergence D4.** Two distinct signatures, never conflated. (a) The **payer authorization** now travels with the call and is verified on-chain: the receipt is minted only if `ECDSA.recover(actionDigest(...)) == payer`, over a fully-enumerated EIP-712 action (see §7). (b) The **service-side evidence signature** is still EIP-191 `personal_sign` over `evidenceHash`, but the hash is now bound to the stored `payloadHash` and the signer pinned to the service of record. |
 | resource / route | `route` | **1:1** (with a caveat: `L5x402` currently stores `route` as a hash-derived string; see the contract's `_bytes32ToString`). |
 | — | `payloadHash` | **ORIGIN addition.** Binds the receipt to the *request parameters*, not to an operator's claim. |
 | — | `permissionHash` | **ORIGIN addition.** Binds the payment to an `L5Delegation` policy (spend authority). |
@@ -132,9 +132,35 @@ We would rather show you that seam than have you find it.
 ## 6. What we'd like to build together
 
 1. **This mapping, agreed line by line** (the doc you're reading).
-2. **A minimal facilitator adapter** — a Nano-settled 402 that calls `recordReceipt(...)` and asserts the round-trip (`getReceiptsByPayer` / `getDelegatedSpendSnapshot`) against the Foundry suite. **Shipped (2026-09-22):** `src/X402FacilitatorAdapter.sol` + `test/L5x402Adapter.t.sol` — 4 tests, suite **46/46 green**. Run: `forge test --match-path test/L5x402Adapter.t.sol`. The adapter writes the x402 `nonce` as the L5x402 `requestId` (the shared join key); for an external rail like Nano it records the receipt against an `ExternalAssetMarker`, so the receipt stays `Pending` (no on-chain movement) — the honest dual-ledger state, where the value moved on the other ledger and origin-1 holds the evidence + key.
+2. **A minimal facilitator adapter** — a Nano-settled 402 that calls `recordReceipt(...)` and asserts the round-trip (`getReceiptsByPayer` / `getDelegatedSpendSnapshot`) against the Foundry suite. **Shipped (2026-09-22; hardened 2026-09-25):** `src/X402FacilitatorAdapter.sol` + `test/L5x402Adapter.t.sol` — the payload now carries the payer's `deadline` + `authorization` signature, and the adapter is a thin pass-through (L5x402 is the only place that validates/consumes the authorization). Foundry suite now **62/62 green**. Run: `forge test --match-path test/L5x402Adapter.t.sol`. The adapter writes the x402 `nonce` as the L5x402 `requestId` (the shared join key); for an external rail like Nano it records the receipt against an `ExternalAssetMarker`, so the receipt stays `Pending` (no on-chain movement) — the honest dual-ledger state, where the value moved on the other ledger and origin-1 holds the evidence + key.
 3. **Review `AgentEscrow`'s payment channel** — the closest thing we have to a "per-call rail" (off-chain N signatures, on-chain settle 1 + challenge window).
 
 Nano stays the default rail. `origin-1`/YUAN is an **optional** settlement leg that adds receipts, reputation and escrow — a clearing layer any rail can write into, not a replacement for yours.
+
+---
+
+## 7. P0 hardening — EMILIA review (commit 807e1ee, 2026-09-24)
+
+Iman Schrock (EMILIA) read the L5 receipt path and named four P0 gaps, plus one artifact-shape question. Every fix is in `src/L5x402.sol` / `src/X402FacilitatorAdapter.sol`, backed by named refusal tests in `test/L5Adversarial.t.sol` (mirroring EMILIA's `reject_*` vectors).
+
+| P0 | Finding | Fix |
+|---|---|---|
+| **#1** | `recordReceipt` was callable by anyone, so the receipt did not prove the **payer authorized the action** | The call now carries the payer's EIP-712 signature + `deadline`; mint requires `ECDSA.recover(actionDigest(...)) == payer`. The action digest is single-use (`consumedAuthorizations`), so an authorization cannot be replayed. |
+| **#2** | Evidence wasn't bound: `verifyReceiptEvidence` accepted a caller-chosen `evidenceHash` **and** a caller-chosen `signer` | Evidence must equal the **stored `payloadHash`** (binding over the signed fields, not a top-level field) and the signer is **pinned to the payee** (role non-substitution). Verification is now state-changing and records `evidenceVerified`. |
+| **#3** | The signed action was under-specified — the digest did not enumerate every material field | A fully-enumerated EIP-712 action: `PAYMENT_ACTION_TYPEHASH` commits to `requestId, payer, payee, token, amount, routeHash, payloadHash, permissionHash, deadline`. A verifier recomputes the field set and gets byte-stable bytes; nothing material is left outside the digest. |
+| **#4** | A receipt whose value had **not moved** could still be minted `Final` | Added a third finality state. `ReceiptFinality` is now `Open` (registered, no movement) / `Final` (value moved, terminal) / `ProvisionalSubjectToVerdict` (movement reversible). `recordReceipt` mints `Open`; only a completed transfer promotes to `Final`; a dispute demotes to provisional; an adjudicated refund returns to `Final`. |
+
+### Artifact shape (the "slot" question)
+
+EMILIA asked whether a receipt should carry a forward reference to a verdict that does **not yet exist**. It should not. The rule we hold (three-stage chain, `CONTRIBUTION-SPEC`): **an artifact declares only what it can prove, then stops.** So:
+
+- **Adjudicated path** — the verdict exists first; the receipt (later) cites it via `attachVerdict(receiptId, verdictDigest)` → `verdictRef` holds the backward reference.
+- **Post-hoc path** — the receipt cannot cite a verdict that did not exist at mint time, so `markProvisional` moves it to `ProvisionalSubjectToVerdict` and stops; the later verdict back-references the receipt via `recordPostHocVerdict` (`verdicts[v].receiptRef == receiptId`).
+- A receipt never embeds a forward "slot to be filled later". No artifact claims a finality it does not have.
+
+**Test evidence.** `forge test` → **62 passed, 0 failed** across 7 suites:
+`L5x402.t.sol` (11), `L5Finality.t.sol` (6), `L5x402Adapter.t.sol` (5), `L5Adversarial.t.sol` (6) — plus the pre-existing core/nucleus/checkpoint/delegation suites.
+
+**Note on EMILIA's reference suite.** `_emilia_ref/test_outcome_binding.py`, `test_role_non_substitution.py`, `test_timestamp_proof.py` import `emilia_verify` and load `conformance/vectors/*.json` — neither is redistributed here, so they cannot be executed in this repo. Rather than assert a pass we did not run, we mirrored their named refusal vectors (`reject_resigned_action_swap`, `reject_resigned_receipt_bytes_swap`, `reject_resigned_consumption_nonce_swap`, `reject_unpinned_executor`, role non-substitution, digest-binds-before-signature, never-raise-on-garbage) as EVM tests in `test/L5Adversarial.t.sol`. Each fails closed, for the right reason.
 
 — 源 / ORIGIN

@@ -51,6 +51,17 @@ contract L5x402 is Ownable, ReentrancyGuard {
     bytes32 public constant TRANSFER_ERC7710 = keccak256("erc7710");
     bytes32 public constant TRANSFER_NATIVE = keccak256("native");
 
+    // P0 #3 (canonicalization): the *complete* typed action. Every material field
+    // of the action is enumerated here, so a canonical digest commits to the whole
+    // action and not to "too little". A verifier recomputes this field set and
+    // gets byte-stable bytes (EMILIA: RFC 8785 JCS + SHA-256 on their side; the
+    // EVM analogue is the keccak256 EIP-712 struct hash below).
+    bytes32 public constant PAYMENT_ACTION_TYPEHASH = keccak256(
+        "PaymentAction(bytes32 requestId,address payer,address payee,address token,uint256 amount,bytes32 routeHash,bytes32 payloadHash,bytes32 permissionHash,uint256 deadline)"
+    );
+    bytes32 public constant DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
     // ═══════════════════════════════════════════════════
     // ENUMS
     // ═══════════════════════════════════════════════════
@@ -67,8 +78,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
     /// A receipt declares what it proves and stops. It never claims a finality it
     /// does not have; a later verdict is the artifact that holds the back-reference.
     enum ReceiptFinality {
-        Final, // auto-conditioned release: no external verdict exists, receipt is terminal
-        ProvisionalSubjectToVerdict // post-release dispute: value moved, finality pending verdict
+        Open, // P0 #4: registered but value has NOT moved -> no finality may be claimed
+        Final, // auto-conditioned release: value moved, no external verdict exists, terminal
+        ProvisionalSubjectToVerdict // value moved but reversal is still possible; finality pending verdict
     }
 
     // ═══════════════════════════════════════════════════
@@ -90,8 +102,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
         uint256 timestamp; // 登记时间
         ReceiptStatus status; // 状态
         bool evidenceVerified; // 服务端签名证据是否通过
-        ReceiptFinality finality; // 终局性：Final | ProvisionalSubjectToVerdict
+        ReceiptFinality finality; // 终局性：Open | Final | ProvisionalSubjectToVerdict
         bytes32 verdictRef; // 经裁定释放时引用已先铸的 verdict digest；否则 0
+        bytes32 actionDigest; // 被授权动作的规范摘要（P0 #3）：第三方可逐字段重算
     }
 
     /// @notice Post-hoc verdict artifact. Minted after the receipt it judges, so
@@ -139,6 +152,12 @@ contract L5x402 is Ownable, ReentrancyGuard {
     // receiptId → 其后铸的 verdict
     mapping(bytes32 => bytes32) public verdictOfReceipt;
 
+    // P0 #1: an action digest may be consumed (authorized) exactly once.
+    mapping(bytes32 => bool) public consumedAuthorizations;
+
+    // EIP-712 domain separator, bound to this chain + this contract.
+    bytes32 public immutable DOMAIN_SEPARATOR;
+
     // 记录数
     uint256 public receiptCount;
     uint256 public snapshotCount;
@@ -177,6 +196,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
 
     event RequirementVerified(bytes32 indexed policyId, bool allowed, string reason, uint256 timestamp);
 
+    /// @notice Evidence for a receipt was submitted and bound (payloadHash + pinned signer).
+    event EvidenceVerified(bytes32 indexed receiptId, address indexed signer, bytes32 evidenceHash, uint256 timestamp);
+
     // ═══════════════════════════════════════════════════
     // MODIFIERS
     // ═══════════════════════════════════════════════════
@@ -190,7 +212,11 @@ contract L5x402 is Ownable, ReentrancyGuard {
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════
 
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable(msg.sender) {
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(DOMAIN_TYPEHASH, keccak256("ORIGIN L5 x402"), keccak256("1"), block.chainid, address(this))
+        );
+    }
 
     // ═══════════════════════════════════════════════════
     // ADMIN: 依赖注入
@@ -264,10 +290,26 @@ contract L5x402 is Ownable, ReentrancyGuard {
         uint256 _amount,
         bytes32 _routeHash,
         bytes32 _payloadHash,
-        bytes32 _permissionHash
+        bytes32 _permissionHash,
+        uint256 _deadline,
+        bytes calldata _payerAuth
     ) external nonReentrant returns (bytes32 receiptId) {
         require(_payer != address(0) && _payee != address(0), "L5x402: bad address");
         require(_amount > 0, "L5x402: zero amount");
+        require(block.timestamp <= _deadline, "L5x402: authorization expired");
+
+        // P0 #1 + P0 #3: the caller must present the payer's signature over the
+        // canonically-encoded action. Nothing here is caller-selected authority:
+        // the digest covers requestId/payer/payee/token/amount/route/payload/
+        // permission/deadline, so the approved action and the dispatched action
+        // are byte-identical or the call reverts.
+        bytes32 digest = actionDigest(
+            _requestId, _payer, _payee, _token, _amount, _routeHash, _payloadHash, _permissionHash, _deadline
+        );
+        require(!consumedAuthorizations[digest], "L5x402: authorization replayed");
+        address authSigner = ECDSA.recover(digest, _payerAuth);
+        require(authSigner == _payer, "L5x402: not payer-authorized");
+        consumedAuthorizations[digest] = true;
 
         receiptId = _generateReceiptId(_requestId, _payer, _payee, _amount, _payloadHash);
         require(receipts[receiptId].receiptId == bytes32(0), "L5x402: duplicate");
@@ -286,8 +328,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
             timestamp: block.timestamp,
             status: ReceiptStatus.Pending,
             evidenceVerified: false,
-            finality: ReceiptFinality.Final, // auto path default; adjudicated path overrides via attachVerdict
-            verdictRef: bytes32(0)
+            finality: ReceiptFinality.Open, // P0 #4: value has not moved yet -> claim no finality
+            verdictRef: bytes32(0),
+            actionDigest: digest
         });
 
         payeeReceipts[_payee].push(receiptId);
@@ -301,6 +344,7 @@ contract L5x402 is Ownable, ReentrancyGuard {
         if (allowance >= _amount) {
             tk.safeTransferFrom(_payer, _payee, _amount);
             receipts[receiptId].status = ReceiptStatus.Settled;
+            receipts[receiptId].finality = ReceiptFinality.Final; // auto-conditioned release: value moved
             _updateSnapshot(_permissionHash, _payer, _amount, block.timestamp);
             emit ReceiptSettled(
                 receiptId, keccak256(abi.encodePacked(_payee, _amount, block.timestamp)), block.timestamp
@@ -427,7 +471,7 @@ contract L5x402 is Ownable, ReentrancyGuard {
     function markProvisional(bytes32 _receiptId) external onlyAdmin returns (bool) {
         PaymentReceipt storage r = receipts[_receiptId];
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
-        require(r.finality == ReceiptFinality.Final, "L5x402: already provisional");
+        require(r.finality != ReceiptFinality.ProvisionalSubjectToVerdict, "L5x402: already provisional");
         r.finality = ReceiptFinality.ProvisionalSubjectToVerdict;
         emit ReceiptMarkedProvisional(_receiptId, block.timestamp);
         return true;
@@ -468,13 +512,55 @@ contract L5x402 is Ownable, ReentrancyGuard {
         bytes32 _evidenceHash,
         bytes calldata _signature,
         address _signer
-    ) external view returns (bool valid) {
+    ) external returns (bool valid) {
         PaymentReceipt storage r = receipts[_receiptId];
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
+        // P0 #2 binding (a): the presented evidence must be the exact digest the
+        // receipt committed to at record time -- not a separately supplied hash.
+        if (_evidenceHash != r.payloadHash) return false;
+        // P0 #2 binding (b): the signer is pinned to the service of record (the
+        // payee), not chosen by the caller.
+        if (_signer != r.payee) return false;
         // 恢复签名者并比对（OZ 5.x：toEthSignedMessageHash 接收 bytes）
         bytes32 ethHashed = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _evidenceHash));
         address recovered = ethHashed.recover(_signature);
-        return recovered == _signer;
+        valid = recovered == _signer;
+        if (valid) {
+            r.evidenceVerified = true;
+            emit EvidenceVerified(_receiptId, _signer, _evidenceHash, block.timestamp);
+        }
+    }
+
+    /// @notice Canonical, fully-enumerated action digest (P0 #3). A third party
+    ///   recomputes this from the field set and gets byte-stable bytes; the
+    ///   payer signs exactly this digest (EIP-712), so approval binds to the
+    ///   complete typed action rather than to an under-specified blob.
+    function actionDigest(
+        bytes32 _requestId,
+        address _payer,
+        address _payee,
+        address _token,
+        uint256 _amount,
+        bytes32 _routeHash,
+        bytes32 _payloadHash,
+        bytes32 _permissionHash,
+        uint256 _deadline
+    ) public view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PAYMENT_ACTION_TYPEHASH,
+                _requestId,
+                _payer,
+                _payee,
+                _token,
+                _amount,
+                _routeHash,
+                _payloadHash,
+                _permissionHash,
+                _deadline
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
     }
 
     // ═══════════════════════════════════════════════════

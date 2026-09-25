@@ -11,6 +11,10 @@ import {MockERC20} from "./MockERC20.t.sol";
 ///         an x402 `exact` payload -> recordReceipt(...) -> getReceiptsByPayer /
 ///         getDelegatedSpendSnapshot round trip.
 ///         Two rails: (1) on-chain token (settles), (2) external rail (Nano, stays Pending).
+///
+///         P0 #1: the adapter is a pass-through; L5x402 requires the payer's
+///         authorization over the canonical action, so the payload carries the
+///         payer signature and the deadline.
 contract L5x402AdapterTest is Test {
     L5x402 public x402;
     MockERC20 public yuan;
@@ -18,8 +22,9 @@ contract L5x402AdapterTest is Test {
 
     address public owner = address(this);
     address public facilitator = address(0xFAC);
-    address public payer = address(0x1);
-    address public payee = address(0x2);
+    uint256 public payerPk = 1;
+    address public payer;
+    address public payee;
 
     bytes32 public policyId = keccak256("policy-1");
     bytes32 public routeHash = keccak256("route:/v1/agent/infer");
@@ -27,6 +32,8 @@ contract L5x402AdapterTest is Test {
     bytes32 public nonce = keccak256("x402-nonce-1");
 
     function setUp() public {
+        payer = vm.addr(payerPk);
+        payee = vm.addr(2);
         x402 = new L5x402();
         yuan = new MockERC20();
         adapter = new X402FacilitatorAdapter(address(x402));
@@ -37,14 +44,29 @@ contract L5x402AdapterTest is Test {
         yuan.approve(address(x402), type(uint256).max);
     }
 
-    function _payload(address asset) internal view returns (X402FacilitatorAdapter.ExactPayload memory) {
-        return X402FacilitatorAdapter.ExactPayload({from: payer, to: payee, asset: asset, value: 5 ether, nonce: nonce});
+    /// Build an x402 exact payload, signed by the payer over the canonical action
+    /// (the token recorded by L5x402: the external marker when asset == 0).
+    function _payload(address asset) internal returns (X402FacilitatorAdapter.ExactPayload memory) {
+        uint256 deadline = block.timestamp + 1 days;
+        address token = asset == address(0) ? adapter.externalAsset() : asset;
+        bytes32 d = x402.actionDigest(nonce, payer, payee, token, 5 ether, routeHash, payloadHash, policyId, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(payerPk, d);
+        return X402FacilitatorAdapter.ExactPayload({
+            from: payer,
+            to: payee,
+            asset: asset,
+            value: 5 ether,
+            nonce: nonce,
+            deadline: deadline,
+            authorization: abi.encodePacked(r, s, v)
+        });
     }
 
     // ---- 1. on-chain token: full round trip, settles + snapshot bumps ----
     function test_SettleExact_OnchainToken_RoundTrip() public {
+        X402FacilitatorAdapter.ExactPayload memory p = _payload(address(yuan));
         vm.prank(facilitator);
-        bytes32 rid = adapter.settleExact(_payload(address(yuan)), routeHash, payloadHash, policyId);
+        bytes32 rid = adapter.settleExact(p, routeHash, payloadHash, policyId);
 
         // receipt fields match the x402 payload
         L5x402.PaymentReceipt memory r = x402.getReceipt(rid);
@@ -53,6 +75,7 @@ contract L5x402AdapterTest is Test {
         assertEq(r.payee, payee);
         assertEq(r.amount, 5 ether);
         assertEq(uint8(r.status), uint8(L5x402.ReceiptStatus.Settled));
+        assertEq(uint8(r.finality), uint8(L5x402.ReceiptFinality.Final));
         assertEq(yuan.balanceOf(payee), 5 ether);
 
         // getReceiptsByPayer round trip
@@ -71,12 +94,14 @@ contract L5x402AdapterTest is Test {
 
     // ---- 2. external rail (Nano): receipt recorded, stays Pending, no on-chain move ----
     function test_SettleExact_ExternalRail_Nano_Pending() public {
+        X402FacilitatorAdapter.ExactPayload memory p = _payload(address(0));
         vm.prank(facilitator);
-        bytes32 rid = adapter.settleExact(_payload(address(0)), routeHash, payloadHash, policyId);
+        bytes32 rid = adapter.settleExact(p, routeHash, payloadHash, policyId);
 
         L5x402.PaymentReceipt memory r = x402.getReceipt(rid);
         assertEq(r.requestId, nonce); // join key still present
         assertEq(uint8(r.status), uint8(L5x402.ReceiptStatus.Pending));
+        assertEq(uint8(r.finality), uint8(L5x402.ReceiptFinality.Open)); // P0 #4: no movement -> Open
         assertEq(r.token, adapter.externalAsset()); // recorded against the marker
         assertEq(yuan.balanceOf(payee), 0); // nothing moved on-chain
 
@@ -95,8 +120,9 @@ contract L5x402AdapterTest is Test {
 
     // ---- 3. only a registered facilitator may settle ----
     function test_SettleExact_OnlyFacilitator() public {
+        X402FacilitatorAdapter.ExactPayload memory p = _payload(address(yuan));
         vm.expectRevert(abi.encodeWithSelector(X402FacilitatorAdapter.NotFacilitator.selector, address(this)));
-        adapter.settleExact(_payload(address(yuan)), routeHash, payloadHash, policyId);
+        adapter.settleExact(p, routeHash, payloadHash, policyId);
     }
 
     // ---- 4. malformed payload rejected (zero nonce -> no join key) ----
@@ -105,6 +131,20 @@ contract L5x402AdapterTest is Test {
         p.nonce = bytes32(0);
         vm.prank(facilitator);
         vm.expectRevert(X402FacilitatorAdapter.BadPayload.selector);
+        adapter.settleExact(p, routeHash, payloadHash, policyId);
+    }
+
+    // ---- 5. P0 #1: an unauthorized (not payer-signed) payload must not settle ----
+    function test_SettleExact_NotPayerAuthorized_Reverts() public {
+        X402FacilitatorAdapter.ExactPayload memory p = _payload(address(yuan));
+        // tamper: swap in a signature from a non-payer key
+        bytes32 d = x402.actionDigest(
+            nonce, payer, payee, address(yuan), 5 ether, routeHash, payloadHash, policyId, p.deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(9, d);
+        p.authorization = abi.encodePacked(r, s, v);
+        vm.prank(facilitator);
+        vm.expectRevert("L5x402: not payer-authorized");
         adapter.settleExact(p, routeHash, payloadHash, policyId);
     }
 }
