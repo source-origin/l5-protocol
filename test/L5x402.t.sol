@@ -155,11 +155,12 @@ contract L5x402Test is Test {
         x402.disputeReceipt(rid2, "fraud evidence");
         assertEq(uint8(x402.getReceipt(rid2).status), uint8(L5x402.ReceiptStatus.Disputed));
 
-        // 裁决退款：payee → payer
-        uint256 payerBefore = yuan.balanceOf(payer);
+        // 裁决退款：未动款收据不可退（value never moved），只能作废
+        vm.expectRevert("L5x402: value never moved");
         x402.refundReceipt(rid2, 5 ether);
-        assertEq(uint8(x402.getReceipt(rid2).status), uint8(L5x402.ReceiptStatus.Refunded));
-        assertEq(yuan.balanceOf(payer), payerBefore + 5 ether);
+        x402.voidReceipt(rid2);
+        assertEq(uint8(x402.getReceipt(rid2).status), uint8(L5x402.ReceiptStatus.Failed));
+        assertEq(uint8(x402.getReceipt(rid2).finality), uint8(L5x402.ReceiptFinality.Open));
     }
 
     function test_Refund_NotDisputed_Fails() public {

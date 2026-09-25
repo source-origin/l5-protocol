@@ -137,8 +137,9 @@ contract L5FinalityTest is Test {
         id = _recordAt(reqId, amt);
     }
 
-    /// P0 #4: a receipt whose value has not moved is Open -- it must not be
-    /// minted Final. Entering dispute moves it into the third state explicitly.
+    /// P0 #4 + refund-hardening: a receipt whose value has NOT moved is Open.
+    /// Disputing a never-moved receipt must NOT lie about its finality: it stays
+    /// Open (it has no finality to claim), and is closed by void -> Failed.
     function test_Disputed_ReceiptIsNotFinal() public {
         bytes32 id = _pending(keccak256("d1"), 100e6);
         assertEq(uint256(x402.getReceipt(id).status), uint256(L5x402.ReceiptStatus.Pending), "pending");
@@ -153,19 +154,22 @@ contract L5FinalityTest is Test {
         assertEq(uint256(r.status), uint256(L5x402.ReceiptStatus.Disputed), "disputed");
         assertEq(
             uint256(r.finality),
-            uint256(L5x402.ReceiptFinality.ProvisionalSubjectToVerdict),
-            "disputed must not keep claiming Final"
+            uint256(L5x402.ReceiptFinality.Open),
+            "disputed never-moved receipt stays Open (never lies as Provisional)"
         );
     }
 
-    /// The adjudicated refund reaches Final: finality is earned at the verdict,
-    /// not asserted at mint.
+    /// Refund-hardening: a never-moved receipt cannot be refunded (nothing moved),
+    /// so the adjudicated path for it is void -> Failed, staying Open.
     function test_Refund_ReachesFinal() public {
         bytes32 id = _pending(keccak256("d2"), 100e6);
         x402.disputeReceipt(id, "dispute");
+        vm.expectRevert(bytes("L5x402: value never moved"));
         x402.refundReceipt(id, 40e6);
+        // the correct close for a never-moved receipt is void, not refund
+        x402.voidReceipt(id);
         L5x402.PaymentReceipt memory r = x402.getReceipt(id);
-        assertEq(uint256(r.status), uint256(L5x402.ReceiptStatus.Refunded), "refunded");
-        assertEq(uint256(r.finality), uint256(L5x402.ReceiptFinality.Final), "verdict -> final");
+        assertEq(uint256(r.status), uint256(L5x402.ReceiptStatus.Failed), "voided");
+        assertEq(uint256(r.finality), uint256(L5x402.ReceiptFinality.Open), "never-moved -> Open");
     }
 }

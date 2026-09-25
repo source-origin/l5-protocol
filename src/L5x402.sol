@@ -101,7 +101,8 @@ contract L5x402 is Ownable2Step, ReentrancyGuard {
         address payer; // 付款方（Agent 或被委托方）
         address payee; // 收款方（服务/能力提供方）
         address token; // 结算代币（YUAN）
-        uint256 amount; // 金额
+        uint256 amount; // 金额（应收额 / 授权额度）
+        uint256 settledAmount; // 🆕 实际已结算额：仅价值真正移动时写入，Pending 恒为 0
         uint256 chainId; // 链 ID
         string route; // HTTP 路由/资源
         bytes32 payloadHash; // 请求参数哈希（Signed Evidence）
@@ -188,6 +189,9 @@ contract L5x402 is Ownable2Step, ReentrancyGuard {
     event ReceiptDisputed(bytes32 indexed receiptId, string reason, uint256 timestamp);
 
     event ReceiptRefunded(bytes32 indexed receiptId, uint256 refundAmount, uint256 timestamp);
+
+    /// @notice A never-moved (Pending/Disputed, settledAmount==0) receipt is voided, not refunded.
+    event ReceiptVoided(bytes32 indexed receiptId, uint256 timestamp);
 
     event ReceiptMarkedProvisional(bytes32 indexed receiptId, uint256 timestamp);
 
@@ -328,6 +332,7 @@ contract L5x402 is Ownable2Step, ReentrancyGuard {
             payee: _payee,
             token: _token,
             amount: _amount,
+            settledAmount: 0, // 🆕 value not moved yet
             chainId: block.chainid,
             route: _bytes32ToString(_routeHash), // 简化：route 以 hash 存储
             payloadHash: _payloadHash,
@@ -354,6 +359,7 @@ contract L5x402 is Ownable2Step, ReentrancyGuard {
         if (allowance >= _amount && _policyAllows(_permissionHash, _payer, _amount)) {
             tk.safeTransferFrom(_payer, _payee, _amount);
             receipts[receiptId].status = ReceiptStatus.Settled;
+            receipts[receiptId].settledAmount = _amount; // 🆕 value moved -> record the moved amount
             receipts[receiptId].finality = ReceiptFinality.Final; // auto-conditioned release: value moved
             _consumePolicy(_permissionHash, _payer, _amount);
             emit ReceiptSettled(
@@ -441,10 +447,10 @@ contract L5x402 is Ownable2Step, ReentrancyGuard {
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(r.status != ReceiptStatus.Settled, "L5x402: already settled");
         r.status = ReceiptStatus.Disputed;
-        // A disputed receipt must not keep claiming Final: value has moved and
-        // finality is now pending a verdict. Enter the third state explicitly,
-        // so a receipt can never be both Disputed and Final at the same time.
-        if (r.finality != ReceiptFinality.ProvisionalSubjectToVerdict) {
+        // 🆕 a never-moved receipt has no finality to claim: only a receipt whose
+        // value actually moved may be marked ProvisionalSubjectToVerdict. A Pending
+        // receipt (settledAmount == 0) stays Open through dispute -> void.
+        if (r.settledAmount > 0 && r.finality != ReceiptFinality.ProvisionalSubjectToVerdict) {
             r.finality = ReceiptFinality.ProvisionalSubjectToVerdict;
             emit ReceiptMarkedProvisional(_receiptId, block.timestamp);
         }
@@ -457,15 +463,33 @@ contract L5x402 is Ownable2Step, ReentrancyGuard {
         PaymentReceipt storage r = receipts[_receiptId];
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(r.status == ReceiptStatus.Disputed, "L5x402: not disputed");
-        require(_refundAmount <= r.amount, "L5x402: over refund");
+        require(r.settledAmount > 0, "L5x402: value never moved"); // 🆕 未动款不可退（只能作废）
+        require(_refundAmount <= r.settledAmount, "L5x402: over settled"); // 🆕 上限 = 实际结算额
 
-        // 从 payee 退回 payer（裁决追回）
+        // 从 payee 退回 payer（裁决追回，只能退实际动过的钱）
         IERC20(r.token).safeTransferFrom(r.payee, r.payer, _refundAmount);
+        r.settledAmount -= _refundAmount; // 🆕 递减，防累计多退
         r.status = ReceiptStatus.Refunded;
-        // Verdict spoken: the adjudicated refund closes the dispute, so finality
-        // is reached here rather than asserted up front at mint time.
-        r.finality = ReceiptFinality.Final;
+        // Verdict-driven finality: a refund is value reflow, NOT a verdict. It does
+        // not mint terminal finality; the receipt stays provisional and finality is
+        // determined by recordPostHocVerdict(isFinal=true) alone. This keeps the
+        // invariant "a verdict settles business, never rewrites whether value moved".
+        r.finality = ReceiptFinality.ProvisionalSubjectToVerdict;
         emit ReceiptRefunded(_receiptId, _refundAmount, block.timestamp);
+        return true;
+    }
+
+    /// @notice Close a disputed receipt whose value never moved. There is nothing to
+    /// refund (settledAmount == 0), so the correct terminal state is Failed (作废),
+    /// not Refunded -- and it stays Open, because it has no finality to claim.
+    function voidReceipt(bytes32 _receiptId) external onlyAdmin returns (bool) {
+        PaymentReceipt storage r = receipts[_receiptId];
+        require(r.receiptId != bytes32(0), "L5x402: no receipt");
+        require(r.status == ReceiptStatus.Disputed, "L5x402: not disputed");
+        require(r.settledAmount == 0, "L5x402: value moved, use refund");
+        r.status = ReceiptStatus.Failed;
+        // stays ReceiptFinality.Open: a receipt that never moved has no finality.
+        emit ReceiptVoided(_receiptId, block.timestamp);
         return true;
     }
 
