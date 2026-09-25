@@ -574,10 +574,14 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // CORE: VERIFICATION
     // ═══════════════════════════════════════════════════
 
-    /// @notice 提升验证等级（由贡献时钟合约调用）
-    function upgradeVerification(address agentAddr, VerificationLevel newLevel) external agentExists(agentAddr) {
-        // 未来：由贡献时钟或DAO治理合约调用
-        // require(msg.sender == contributionClock || msg.sender == daoGovernance);
+    /// @notice 提升验证等级（止血锁：暂由 owner 调用）
+    function upgradeVerification(address agentAddr, VerificationLevel newLevel)
+        external
+        onlyOwner
+        agentExists(agentAddr)
+    {
+        // 止血锁：贡献时钟/DAO 尚未部署，暂由 owner 担任（严格严于「任何人可调」）。
+        // TODO(接线): 贡献时钟或 DAO 治理合约上线后改为 require(msg.sender == contributionClock || msg.sender == daoGovernance);
         require(uint8(newLevel) > uint8(agents[agentAddr].verification), "Identity: cannot downgrade");
 
         agents[agentAddr].verification = newLevel;
@@ -590,8 +594,8 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // CORE: REVENUE TRACKING
     // ═══════════════════════════════════════════════════
 
-    /// @notice 记录Agent收入（由AgentEscrow合约调用）
-    function recordRevenue(address agentAddr, uint256 amount) external agentExists(agentAddr) {
+    /// @notice 记录Agent收入（止血锁：暂由 owner 调用）
+    function recordRevenue(address agentAddr, uint256 amount) external onlyOwner agentExists(agentAddr) {
         Agent storage a = agents[agentAddr];
         a.totalRevenue += amount;
         a.totalTransactions += 1;
@@ -656,9 +660,14 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
     // CORE: PENALTY
     // ═══════════════════════════════════════════════════
 
-    /// @notice 暂停Agent（由仲裁系统调用）
-    function suspendAgent(address agentAddr, string calldata reason, uint256 days_) external agentExists(agentAddr) {
-        // 未来：由贡献时钟或DAO调用
+    /// @notice 暂停Agent（止血锁：暂由 owner 调用）
+    function suspendAgent(address agentAddr, string calldata reason, uint256 days_)
+        external
+        onlyOwner
+        agentExists(agentAddr)
+    {
+        // 止血锁：贡献时钟/DAO 尚未部署，暂由 owner 担任。
+        // TODO(接线): 贡献时钟或 DAO 上线后改为 require(msg.sender == contributionClock || msg.sender == daoGovernance);
         Agent storage a = agents[agentAddr];
         a.status = AgentStatus.Suspended;
         a.updatedAt = block.timestamp;
@@ -671,9 +680,10 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable {
         emit AgentSuspended(agentAddr, reason, block.timestamp + days_ * 1 days, block.timestamp);
     }
 
-    /// @notice 罚没Agent（永久禁止）
-    function slashAgent(address agentAddr, string calldata reason) external agentExists(agentAddr) {
-        // 未来：由贡献时钟调用
+    /// @notice 罚没Agent（永久禁止）（止血锁：暂由 owner 调用）
+    function slashAgent(address agentAddr, string calldata reason) external onlyOwner agentExists(agentAddr) {
+        // 止血锁：贡献时钟尚未部署，暂由 owner 担任。
+        // TODO(接线): 贡献时钟上线后改为 require(msg.sender == contributionClock);
         Agent storage a = agents[agentAddr];
         a.status = AgentStatus.Slashed;
         a.verification = VerificationLevel.None;

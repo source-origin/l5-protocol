@@ -23,13 +23,15 @@
 pragma solidity ^0.8.28;
 
 import "./AgentAgreement.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AgentEscrow
  * @notice AI Agent 之间的链上托管支付合?+
  * @dev 与AgentAgreement紧密集成，通过agreementId关联
  */
-contract AgentEscrow {
+contract AgentEscrow is Ownable, ReentrancyGuard {
     //  ══════════════════════════════════════════════════
     //  ENUMS
     // ══════════════════════════════════════════════════
@@ -181,7 +183,7 @@ contract AgentEscrow {
     //  ══════════════════════════════════════════════════
     //  CONSTRUCTOR
     // ══════════════════════════════════════════════════
-    constructor(address _agentAgreement) {
+    constructor(address _agentAgreement) Ownable(msg.sender) {
         require(_agentAgreement != address(0), "Escrow: zero address");
         agentAgreement = AgentAgreement(_agentAgreement);
     }
@@ -352,13 +354,15 @@ contract AgentEscrow {
     // / @param payeeWins true=Provider获胜得全款，false=Consumer获胜退
     function resolveDispute(bytes32 escrowId, bool payeeWins)
         external
+        onlyOwner
+        nonReentrant
         escrowExists(escrowId)
         onlyState(escrowId, EscrowState.Disputed)
     {
         Escrow storage esc = escrows[escrowId];
 
-        // 未来：由贡献时钟验证调用权限
-        // require(msg.sender == address(contributionClock), "Escrow: only contribution clock");
+        // 止血锁：贡献时钟尚未部署，裁决者暂由 owner 担任（严格严于「任何人可调」）。
+        // TODO(接线): 贡献时钟合约上线后改为 require(msg.sender == address(contributionClock), "Escrow: only contribution clock");
 
         uint256 escrowAmount = esc.amount;
         uint256 bondAmount = esc.disputeBond;
@@ -407,7 +411,7 @@ contract AgentEscrow {
     //  ══════════════════════════════════════════════════
     //  ADMIN
     // ══════════════════════════════════════════════════
-    function setDisputeBond(uint256 newBps) external {
+    function setDisputeBond(uint256 newBps) external onlyOwner {
         require(newBps <= MAX_DISPUTE_BOND_BPS, "Escrow: bond too high");
         disputeBondBps = newBps;
     }
@@ -487,13 +491,17 @@ contract AgentEscrow {
     }
 
     /// @notice 挑战期过后完成结算
-    function finalizeSettlement(bytes32 channelId) external {
+    function finalizeSettlement(bytes32 channelId) external nonReentrant {
         PaymentChannel storage ch = channels[channelId];
         require(ch.state == ChannelState.Settling, "Channel: not settling");
         require(block.timestamp >= ch.settlingAt + challengePeriod, "Channel: challenge period not over");
 
         uint256 cumulativeAmount = ch.pendingAmount;
         uint256 senderRefund = ch.balance - cumulativeAmount;
+
+        // Checks-Effects-Interactions：先落状态再转账（防重入双重支付）
+        ch.balance = 0;
+        ch.state = ChannelState.Closed;
 
         if (cumulativeAmount > 0) {
             (bool paid,) = ch.receiver.call{value: cumulativeAmount}("");
@@ -503,9 +511,6 @@ contract AgentEscrow {
             (bool refunded,) = ch.sender.call{value: senderRefund}("");
             require(refunded, "Channel: refund failed");
         }
-
-        ch.balance = 0;
-        ch.state = ChannelState.Closed;
 
         emit ChannelSettled(channelId, cumulativeAmount, block.timestamp);
     }
