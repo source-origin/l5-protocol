@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>遥操作劳务结算 · L5 结算剧场(楔子 A)</title>
+<style>
+  :root{--b1:#f5f9ff;--ink:#12233f;--mut:#5b6b83;--line:#dfe7f3;
+        --gold:#c8951a;--cyan:#0e8f9b;--blue:#2f6bd8;--green:#1f9d55;
+        --red:#ce3b3b;--purple:#7a5ac2;--card:#ffffff;}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 500px at 20% -5%,#e8f1ff 0%,var(--b1) 45%);
+       color:var(--ink);font:15px/1.6 "Segoe UI",system-ui,Arial,sans-serif;padding:34px 18px 60px;}
+  .wrap{max-width:920px;margin:0 auto}
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:26px;margin:0;letter-spacing:.5px}
+  .hero .sub{color:var(--mut);font-size:13px;margin-top:6px}
+  .badgeA{background:var(--gold);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;vertical-align:middle;margin-left:6px}
+  .tabs{display:flex;gap:8px;margin:18px 0 8px}
+  .tab{font:600 13px inherit;border:1px solid var(--line);background:#fff;color:var(--mut);
+       border-radius:999px;padding:6px 16px;cursor:pointer}
+  .tab.on{color:#fff;background:var(--ink);border-color:var(--ink)}
+  .toolbar{display:flex;gap:10px;margin:14px 0 20px;align-items:center;flex-wrap:wrap}
+  button{font:600 14px inherit;border:1px solid var(--line);background:#fff;color:var(--blue);
+         border-radius:999px;padding:8px 18px;cursor:pointer;box-shadow:0 1px 2px rgba(18,35,63,.05);transition:.15s}
+  button:hover{border-color:var(--blue);background:#eef4ff;transform:translateY(-1px)}
+  .status-pill{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);
+       border-radius:999px;padding:6px 14px;font-size:13px;color:var(--mut);margin-left:auto}
+  .dot{width:9px;height:9px;border-radius:50%;background:#cfd6e2}
+  .dot.live{background:var(--green);box-shadow:0 0 0 3px #cdeedb}
+  .progress{margin:4px 0 16px}
+  .progress-track{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+  .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--green));transition:width .3s ease}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0;
+        box-shadow:0 2px 8px rgba(18,35,63,.05);opacity:.62;transition:opacity .25s,transform .25s,border-color .25s}
+  .card:first-child{opacity:1}
+  .card.live{opacity:1;border-color:var(--cyan);box-shadow:0 6px 20px rgba(14,143,155,.16);transform:translateY(-2px)}
+  .step-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .step-no{font:700 16px/1 monospace;color:#fff;background:var(--ink);border-radius:8px;padding:4px 9px}
+  .step-name{font:700 18px inherit;letter-spacing:.6px}
+  .gate{margin-left:auto;font-size:12px;font-weight:700;border-radius:999px;padding:3px 11px}
+  .gate-ok{color:var(--green);background:#e8f8ef}
+  .gate-warn{color:#926a07;background:#faf0d4}
+  .goals{color:var(--mut);font-size:13px;margin:10px 0 6px}
+  .goals b{color:var(--ink)}
+  .note{color:#3a4a63;margin:0 0 12px}
+  .chain{margin:2px 0 12px}
+  .tap{display:inline-flex;align-items:center;gap:6px;font:600 12px ui-monospace,Consolas,monospace;
+       color:var(--cyan);background:#dff3f5;border-radius:6px;padding:3px 9px;margin:2px 4px 2px 0}
+  .ledgers{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:stretch;
+       border-top:1px dashed var(--line);padding-top:12px}
+  .ledger-cell{display:flex;flex-direction:column;gap:6px;font-size:13px}
+  .badge{border-radius:999px;padding:3px 11px;font-weight:600;font-size:12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .badge-none{color:var(--mut);background:#eef2f8}
+  .badge-fund{color:#926a07;background:#faf0d4}
+  .badge-verify{color:#0b7a68;background:#dff5ef}
+  .badge-settle{color:#137a37;background:#ddf3e3}
+  .badge-dispute{color:var(--purple);background:#ede5fa}
+  .badge-exec{color:var(--cyan);background:#dff3f5}
+  .funds{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--mut)}
+  .money{font:700 15px/1 ui-monospace,Consolas,monospace;color:var(--ink)}
+  .money.ok{color:var(--green)}
+  .money.out{color:#b3bccb}
+  .foot{margin-top:28px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:14px;line-height:1.9}
+  .foot b{color:#8a94a6}
+  code{background:#eef2f8;border-radius:4px;padding:1px 5px;font-size:12px}
+  @media(max-width:720px){.ledgers{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>遥操作劳务结算<span class="badgeA">楔子 A</span></h1>
+      <div class="sub">人给机器人干活 → 按单元计酬 · 托管 · <b>多退少补</b> · 争议仲裁。协议<b>未改一行</b>，全部复用 L5 六件套。</div>
+    </div>
+    <span class="status-pill" id="pillholder"><span class="dot" id="dot"></span><span id="pill">就绪</span></span>
+  </div>
+
+  <div class="tabs">
+    <span class="tab on" id="tab-ok" onclick="setMode('ok')">成功轨迹</span>
+    <span class="tab" id="tab-dis" onclick="setMode('dis')">争议轨迹</span>
+  </div>
+
+  <p style="color:var(--mut)">选择轨迹后点「播放」，8 个可观测节点自上而下逐条点亮；每步标注它复用的链上合约（括号内为真实函数）。</p>
+  <div class="toolbar">
+    <button onclick="play()">▶ 播放</button>
+    <button onclick="reset()">重置</button>
+  </div>
+  <div class="progress"><div class="progress-track"><div class="progress-fill" id="fill"></div></div></div>
+  <div id="cards"></div>
+
+  <div class="foot">
+    <b>复用的链上件（零改动）：</b>
+    <code>AgentIdentity</code> 身份(DID) · <code>AgentAgreement</code> 劳务条款 ·
+    <code>AgentEscrow</code> 托管/通道/争议 · <code>L5x402</code> 收据留痕 · <code>L5Delegation</code> 指令授权。
+    <br><b>诚实边界：</b>交付证明目前是哈希锚（链自证不了物理动作）；<code>resolveDispute</code> 当前由 owner 裁决（M1 后 = 2-of-3 Safe + 48h timelock），非去中心裁决。
+    <br>量子总督 · 2026-09-25 · 楔子 A demo · 配套 <code>embodied-wedgeA-design.md</code> / <code>embodied-ai-l5-bridge.md</code>
+  </div>
+</div>
+
+<script>
+const BUDGET = 100, UNIT = 12, UNITS = 5, SPENT = UNIT * UNITS, REFUND = BUDGET - SPENT;
+
+const TRAJ = {
+  ok: [
+    { n:'发布任务', ink:'', gate:['双对方就绪','gate-ok'],
+      goal:'甲方 + 操作员各持 DID；劳务条款落协议',
+      note:'甲方把「按单元计酬、总额 100、单价 12」写成劳务协议并提议。',
+      chain:['AgentIdentity.registerAgent','AgentAgreement.createAgreement','AgentAgreement.propose'],
+      led:[['协议','ag-exec','DRAFT→PROPOSED'],['资金','badge-none','0'],['已付','money out','0'],['退回','money out','0']] },
+    { n:'操作员接单', ink:'', gate:['Executed','gate-ok'],
+      goal:'操作员签名接单 → 协议生效',
+      note:'操作员对自己的 DID 用私钥签名，条款双方落签，协议进入 Executed。',
+      chain:['AgentAgreement.signAgreement'],
+      led:[['协议','ag-exec','EXECUTED'],['资金','badge-none','0'],['已付','money out','0'],['退回','money out','0']] },
+    { n:'甲方托管预算', ink:'', gate:['通道 Open','gate-ok'],
+      goal:'预算 100 进通道（按量计量的托管）',
+      note:'甲方开一条支付通道注入 100。钱锁在合约里，操作员还拿不到——用多少结多少。',
+      chain:['AgentEscrow.openChannel{100}(操作员)'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-fund','OPEN · 100'],['已付','money out','0'],['退回','money out','0']] },
+    { n:'逐单元计量', ink:'', gate:['off-chain','gate-warn'],
+      goal:'操作员干活，按单元签凭据（非每笔上链）',
+      note:'每完成 1 个遥操作单元，操作员离线签一张累计凭据(nonce=1..5)。5 张凭据=5×12=60，链上此刻仍是 0 交易。',
+      chain:['PaymentChannel voucher (off-chain sign)'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-fund','OPEN · 100'],['已付','money','60 (未上链)'],['退回','money out','—']] },
+    { n:'提交交付证明', ink:'', gate:['证据锚定','gate-ok'],
+      goal:'把「干了什么」锚成可审计证据',
+      note:'操作员提交交付证明（遥测/摄像头流的哈希），并登记一条 append-only 收据，为责任归属留痕。',
+      chain:['AgentEscrow.verifyDelivery','L5x402.recordReceipt'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-fund','OPEN · 100'],['已付','money','60'],['退回','money out','—']] },
+    { n:'通道结算', ink:'', gate:['Settling','gate-warn'],
+      goal:'上链一次性结清累计额 → 进入挑战期',
+      note:'5 张凭据合成 1 笔链上交易：settleChannel(nonce=5, 累计 60)。进入 7 天挑战期，任何人可在此期间举证更高凭据。',
+      chain:['AgentEscrow.settleChannel'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-settle','SETTLING · 60'],['已付','money','60 (待终局)'],['退回','money out','—']] },
+    { n:'挑战期无异议', ink:'', gate:['可终局','gate-ok'],
+      goal:'挑战期过后完成结算',
+      note:'挑战期内无人提交更优凭据，通道可 finalize。',
+      chain:['AgentEscrow.finalizeSettlement'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-settle','READY'],['已付','money','60'],['退回','money out','40 待退']] },
+    { n:'终局 · 多退少补', ink:'', gate:['Closed','gate-ok'],
+      goal:'操作员拿劳务费；甲方拿回未用的钱',
+      note:'操作员得 60；甲方自动收回 100−60=40。这不是"另开退款"，是通道结算的副产品。全程收据留痕。',
+      chain:['Channel.Closed','L5x402 receipt (append-only)'],
+      led:[['协议','ag-settle','SETTLED'],['通道','badge-settle','CLOSED'],['已付操作员','money ok','60'],['退回甲方','money ok','40']] }
+  ],
+  dis: [
+    { n:'发布任务', ink:'', gate:['双对方就绪','gate-ok'],
+      goal:'甲方 + 操作员各持 DID；劳务条款落协议',
+      note:'同成功轨迹：按单元计酬，总额 100，单价 12。',
+      chain:['AgentIdentity.registerAgent','AgentAgreement.createAgreement','AgentAgreement.propose'],
+      led:[['协议','ag-exec','DRAFT→PROPOSED'],['资金','badge-none','0'],['已付','money out','0'],['退回','money out','0']] },
+    { n:'操作员接单', ink:'', gate:['Executed','gate-ok'],
+      goal:'协议生效', note:'双方落签，进入 Executed。',
+      chain:['AgentAgreement.signAgreement'],
+      led:[['协议','ag-exec','EXECUTED'],['资金','badge-none','0'],['已付','money out','0'],['退回','money out','0']] },
+    { n:'甲方托管预算', ink:'', gate:['通道 Open','gate-ok'],
+      goal:'预算 100 进通道', note:'甲方注入 100 到支付通道。',
+      chain:['AgentEscrow.openChannel{100}(操作员)'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-fund','OPEN · 100'],['已付','money out','0'],['退回','money out','0']] },
+    { n:'计量后起争议', ink:'', gate:['Disputed','gate-warn'],
+      goal:'甲方认为计量不实（少干活多报）',
+      note:'甲方对结算额提出争议并押注押金；通道进入争议态，等待举证。',
+      chain:['AgentEscrow.disputeChannel{押金}'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-dispute','DISPUTE'],['已付','money out','冻结'],['退回','money out','冻结']] },
+    { n:'举证（Schelling）', ink:'', gate:['更高凭据胜','gate-ok'],
+      goal:'谁能出示更高 nonce 的凭据，谁说了算',
+      note:'甲方出示操作员签的更低累计额凭据（nonce 更高/金额更小）→ 结算额被修正，证明"实际只干了这么多"。',
+      chain:['AgentEscrow.disputeChannel(correctNonce, correctAmount, sig)'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-settle','SETTLING · 修正'],['已付','money','修正额'],['退回','money out','—']] },
+    { n:'押金罚则', ink:'', gate:['罚则生效','gate-warn'],
+      goal:'谎报一方失押金',
+      note:'若甲方举证不成立（拿不出更优凭据），押金一半罚给操作员；反之操作员被 slash。质押让"乱告"有成本。',
+      chain:['PaymentChannel dispute bond / AgentIdentity.slash'],
+      led:[['协议','ag-exec','EXECUTED'],['通道','badge-dispute','罚则'],['已付','money','调整'],['退回','money out','—']] },
+    { n:'裁决 / 终局', ink:'', gate:['Resolved','gate-ok'],
+      goal:'争议解决后完成结算',
+      note:'托管争议由裁决方 resolveDispute(payeeWins) 定胜负，败方押金归胜方；通道争议按 Schelling 点自动收敛。',
+      chain:['AgentEscrow.resolveDispute(payeeWins)','finalizeSettlement'],
+      led:[['协议','ag-settle','SETTLED'],['通道','badge-settle','CLOSED'],['已付操作员','money ok','按裁决'],['退回甲方','money ok','按裁决']] },
+    { n:'留痕复盘', ink:'', gate:['append-only','gate-ok'],
+      goal:'全过程可审计（黑匣子）',
+      note:'每步都有收据/事件哈希，第三方可复算责任——这是具身责任归属的底座。',
+      chain:['L5x402 receipt chain','finality'],
+      led:[['协议','ag-settle','SETTLED'],['通道','badge-settle','CLOSED'],['已付操作员','money ok','终'],['退回甲方','money ok','终']] }
+  ]
+};
+
+let mode='ok', timer=null, cur=0;
+
+function setMode(m){
+  mode=m; reset();
+  document.getElementById('tab-ok').classList.toggle('on', m==='ok');
+  document.getElementById('tab-dis').classList.toggle('on', m==='dis');
+}
+
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+function render(){
+  const data=TRAJ[mode];
+  document.getElementById('cards').innerHTML = data.map((s,i)=>`
+    <div class="card" id="c-${i}">
+      <div class="step-head">
+        <span class="step-no">${String(i+1).padStart(2,'0')}</span>
+        <span class="step-name">${esc(s.n)}</span>
+        <span class="gate ${s.gate[1]}">${esc(s.gate[0])}</span>
+      </div>
+      <div class="goals"><b>目标：</b>${esc(s.goal)}</div>
+      <p class="note">${esc(s.note)}</p>
+      <div class="chain">${s.chain.map(c=>`<span class="tap">↳ ${esc(c)}</span>`).join('')}</div>
+      <div class="ledgers">
+        <div class="ledger-cell">${s.led.map(l=>`<span class="badge ${l[1]}" style="align-self:flex-start">${esc(l[0])}: ${esc(l[2])}</span>`).join('')}</div>
+        <div class="funds"></div>
+      </div>
+    </div>`).join('');
+}
+
+function reset(){
+  clearInterval(timer); timer=null; cur=0;
+  render();
+  document.getElementById('fill').style.width='0%';
+  document.getElementById('pill').textContent='就绪';
+  document.getElementById('dot').classList.remove('live');
+}
+
+function play(){
+  reset();
+  const data=TRAJ[mode];
+  document.getElementById('dot').classList.add('live');
+  timer=setInterval(()=>{
+    if(cur>0) document.getElementById(`c-${cur-1}`)?.classList.remove('live');
+    if(cur>=data.length){ clearInterval(timer); timer=null;
+      document.getElementById('pill').textContent='✔ 完成';
+      document.getElementById('fill').style.width='100%'; return; }
+    const el=document.getElementById(`c-${cur}`); if(el) el.classList.add('live');
+    document.getElementById('pill').textContent=`播放 ${cur+1} / ${data.length}`;
+    document.getElementById('fill').style.width=((cur+1)/data.length*100)+'%';
+    if(cur>0) el && el.scrollIntoView({behavior:'smooth',block:'center'});
+    cur++;
+  }, 1100);
+}
+
+render();
+</script>
+</body>
+</html>
