@@ -36,6 +36,8 @@ contract L5FinalityTest is Test {
         // payee may need to fund a refund after an adjudicated dispute
         vm.prank(payee);
         yuan.approve(address(x402), type(uint256).max);
+        // H2: register the spend policy so settlements are gated by an on-chain cap.
+        x402.updateSnapshot(permHash, payer, 0, 1_000e6, 7 days);
     }
 
     function _sig(bytes32 reqId, uint256 amt, uint256 deadline) internal view returns (bytes memory) {

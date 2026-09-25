@@ -91,7 +91,7 @@ contract L5AdversarialTest is Test {
 
         // (a) evidence digest must equal the stored payloadHash
         bytes32 wrongHash = keccak256("swapped-evidence");
-        bytes32 d = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", wrongHash));
+        bytes32 d = x402.receiptEvidenceDigest(id, wrongHash); // H3: domain-bound
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(payeePk, d);
         assertFalse(
             x402.verifyReceiptEvidence(id, wrongHash, abi.encodePacked(r, s, v), payee),
@@ -100,7 +100,7 @@ contract L5AdversarialTest is Test {
 
         // (b) even a correctly-hashed, correctly-signed blob is refused if the
         // caller tries to pin a foreign signer
-        bytes32 d2 = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
+        bytes32 d2 = x402.receiptEvidenceDigest(id, payloadHash); // H3: domain-bound
         (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(payeePk, d2);
         assertFalse(
             x402.verifyReceiptEvidence(id, payloadHash, abi.encodePacked(r2, s2, v2), payer),
@@ -116,7 +116,7 @@ contract L5AdversarialTest is Test {
             requestId, payer, payee, address(yuan), 5e6, routeHash, payloadHash, permHash, deadline, sig
         );
         // payer signs the exact evidence hash, but payer is NOT the service key
-        bytes32 d = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
+        bytes32 d = x402.receiptEvidenceDigest(id, payloadHash); // H3: domain-bound
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(payerPk, d);
         assertFalse(
             x402.verifyReceiptEvidence(id, payloadHash, abi.encodePacked(r, s, v), payee),

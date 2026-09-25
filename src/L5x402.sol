@@ -62,6 +62,12 @@ contract L5x402 is Ownable, ReentrancyGuard {
     bytes32 public constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
+    // H3 (domain binding): the service evidence signature covers the receipt it
+    // belongs to, so a valid signature for one receipt/chain cannot be replayed
+    // against another receipt or another deployment.
+    bytes32 public constant RECEIPT_EVIDENCE_TYPEHASH =
+        keccak256("ReceiptEvidence(bytes32 receiptId,bytes32 payloadHash)");
+
     // ═══════════════════════════════════════════════════
     // ENUMS
     // ═══════════════════════════════════════════════════
@@ -339,13 +345,16 @@ contract L5x402 is Ownable, ReentrancyGuard {
 
         // 尝试从 payer 转移代币完成结算（若无 allowance 则留在 Pending 待 facilitator 结算）
         // 注意：这里要求 payer 已对 x402 合约 approve
+        // H2: settlement requires BOTH an approved allowance AND a registered policy
+        // within its on-chain cap. An unknown policy grants nothing (we never mint an
+        // unlimited authority), so the receipt simply stays Pending instead of settling.
         IERC20 tk = IERC20(_token);
         uint256 allowance = tk.allowance(_payer, address(this));
-        if (allowance >= _amount) {
+        if (allowance >= _amount && _policyAllows(_permissionHash, _payer, _amount)) {
             tk.safeTransferFrom(_payer, _payee, _amount);
             receipts[receiptId].status = ReceiptStatus.Settled;
             receipts[receiptId].finality = ReceiptFinality.Final; // auto-conditioned release: value moved
-            _updateSnapshot(_permissionHash, _payer, _amount, block.timestamp);
+            _consumePolicy(_permissionHash, _payer, _amount);
             emit ReceiptSettled(
                 receiptId, keccak256(abi.encodePacked(_payee, _amount, block.timestamp)), block.timestamp
             );
@@ -385,30 +394,40 @@ contract L5x402 is Ownable, ReentrancyGuard {
             snap.periodStart = block.timestamp;
             snap.spentPeriod = 0;
         }
-        snap.spentPeriod += _amount;
-        snap.spentTotal += _amount;
-        snap.requestCount++;
+        // A zero-amount call is a registration / period roll only, not a spend.
+        if (_amount > 0) {
+            snap.spentPeriod += _amount;
+            snap.spentTotal += _amount;
+            snap.requestCount++;
+        }
         emit SnapshotUpdated(_policyId, _delegate, snap.spentTotal, snap.requestCount, block.timestamp);
         return snap;
     }
 
-    /// @notice 内部快照更新（由 recordReceipt 调用）
-    function _updateSnapshot(bytes32 _policyId, address _delegate, uint256 _amount, uint256 _now) internal {
+    /// @notice H2: read-only policy gate used at settlement time. Mirrors
+    ///   verifyRequirement's rules (registered + delegate match + within cap) and
+    ///   returns false for an UNKNOWN policy -- it never grants unlimited authority.
+    function _policyAllows(bytes32 _policyId, address _delegate, uint256 _amount) internal view returns (bool) {
         SpendSnapshot storage snap = snapshots[_policyId];
-        if (snap.delegate == address(0)) {
-            snap.policyId = _policyId;
-            snap.delegate = _delegate;
-            snap.periodStart = _now;
-            snap.maxPerPeriod = type(uint256).max; // 未知时用最大，实际由 L5Delegation 约束
-            snapshotCount++;
-        }
-        if (_now > snap.periodStart + snap.period) {
-            snap.periodStart = _now;
+        if (snap.delegate == address(0)) return false; // unknown policy -> no authority
+        if (snap.delegate != _delegate) return false;
+        if (_amount > snap.maxPerPeriod) return false;
+        uint256 spent = snap.spentPeriod;
+        if (block.timestamp > snap.periodStart + snap.period) spent = 0;
+        return spent + _amount <= snap.maxPerPeriod;
+    }
+
+    /// @notice H2: consume a settled spend against the policy snapshot.
+    function _consumePolicy(bytes32 _policyId, address _delegate, uint256 _amount) internal {
+        SpendSnapshot storage snap = snapshots[_policyId];
+        if (block.timestamp > snap.periodStart + snap.period) {
+            snap.periodStart = block.timestamp;
             snap.spentPeriod = 0;
         }
         snap.spentPeriod += _amount;
         snap.spentTotal += _amount;
         snap.requestCount++;
+        emit SnapshotUpdated(_policyId, _delegate, snap.spentTotal, snap.requestCount, block.timestamp);
     }
 
     // ═══════════════════════════════════════════════════
@@ -460,6 +479,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(_verdictDigest != bytes32(0), "L5x402: empty verdict");
         require(r.verdictRef == bytes32(0), "L5x402: verdict already set");
+        // H4: a verdict may only render *final* an action whose value has actually
+        // moved. A receipt that never settled must not be promoted to Final.
+        require(r.status == ReceiptStatus.Settled, "L5x402: value not moved");
         r.verdictRef = _verdictDigest;
         r.finality = ReceiptFinality.Final;
         emit ReceiptCitedVerdict(_receiptId, _verdictDigest, block.timestamp);
@@ -472,6 +494,9 @@ contract L5x402 is Ownable, ReentrancyGuard {
         PaymentReceipt storage r = receipts[_receiptId];
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(r.finality != ReceiptFinality.ProvisionalSubjectToVerdict, "L5x402: already provisional");
+        // H4: provisionality implies value has moved and is subject to reversal;
+        // a never-moved receipt is Open and must not claim this state either.
+        require(r.finality != ReceiptFinality.Open, "L5x402: value not moved");
         r.finality = ReceiptFinality.ProvisionalSubjectToVerdict;
         emit ReceiptMarkedProvisional(_receiptId, block.timestamp);
         return true;
@@ -488,6 +513,10 @@ contract L5x402 is Ownable, ReentrancyGuard {
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
         require(_verdictDigest != bytes32(0), "L5x402: empty verdict");
         require(verdicts[_verdictDigest].verdictId == bytes32(0), "L5x402: duplicate verdict");
+        // H4: only a receipt whose value moved can be rendered final by a verdict.
+        if (_isFinal) {
+            require(r.status == ReceiptStatus.Settled || r.status == ReceiptStatus.Refunded, "L5x402: value not moved");
+        }
         verdicts[_verdictDigest] = Verdict({
             verdictId: _verdictDigest,
             receiptRef: _receiptId, // backward reference
@@ -521,9 +550,10 @@ contract L5x402 is Ownable, ReentrancyGuard {
         // P0 #2 binding (b): the signer is pinned to the service of record (the
         // payee), not chosen by the caller.
         if (_signer != r.payee) return false;
-        // 恢复签名者并比对（OZ 5.x：toEthSignedMessageHash 接收 bytes）
-        bytes32 ethHashed = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _evidenceHash));
-        address recovered = ethHashed.recover(_signature);
+        // 恢复签名者并比对。H3: the evidence signature is domain-bound (chainId +
+        // verifyingContract + receiptId + payloadHash), so a signature for one receipt
+        // cannot be replayed against another receipt or another chain/deployment.
+        address recovered = ECDSA.recover(receiptEvidenceDigest(_receiptId, r.payloadHash), _signature);
         valid = recovered == _signer;
         if (valid) {
             r.evidenceVerified = true;
@@ -560,6 +590,13 @@ contract L5x402 is Ownable, ReentrancyGuard {
                 _deadline
             )
         );
+        return keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+    }
+
+    /// @notice H3: canonical, domain-bound digest a service signs for its evidence.
+    ///   Same shape as actionDigest (EIP-712) but bound to (receiptId, payloadHash).
+    function receiptEvidenceDigest(bytes32 _receiptId, bytes32 _payloadHash) public view returns (bytes32) {
+        bytes32 structHash = keccak256(abi.encode(RECEIPT_EVIDENCE_TYPEHASH, _receiptId, _payloadHash));
         return keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
     }
 

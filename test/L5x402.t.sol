@@ -79,6 +79,8 @@ contract L5x402Test is Test {
 
     // ── recordReceipt (有 allowance + 授权 → Settled, Final) ──
     function test_RecordReceipt_Settled() public {
+        // H2: settlement now requires a registered policy within its on-chain cap.
+        x402.updateSnapshot(policyId, payer, 0, 100 ether, 7 days);
         bytes32 rid = _record();
         L5x402.PaymentReceipt memory r = x402.getReceipt(rid);
         assertEq(uint8(r.status), uint8(L5x402.ReceiptStatus.Settled));
@@ -135,6 +137,8 @@ contract L5x402Test is Test {
 
     // ── 仲裁闭环：dispute → refund（裁决追回）──
     function test_DisputeThenRefund() public {
+        // H2: register the policy so the first receipt actually settles.
+        x402.updateSnapshot(policyId, payer, 0, 100 ether, 7 days);
         bytes32 rid = _record();
         assertEq(uint8(x402.getReceipt(rid).status), uint8(L5x402.ReceiptStatus.Settled));
 
@@ -170,7 +174,7 @@ contract L5x402Test is Test {
     function test_VerifyReceiptEvidence() public {
         bytes32 rid = _record();
         bytes32 evidenceHash = x402.getReceipt(rid).payloadHash; // 必须等于登记时的 payloadHash
-        bytes32 signedDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", evidenceHash));
+        bytes32 signedDigest = x402.receiptEvidenceDigest(rid, evidenceHash); // H3: domain-bound
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(payeePk, signedDigest);
         bytes memory sig = abi.encodePacked(r, s, v);
 

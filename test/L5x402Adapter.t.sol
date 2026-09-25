@@ -42,6 +42,8 @@ contract L5x402AdapterTest is Test {
         yuan.mint(payer, 1000 ether);
         vm.prank(payer);
         yuan.approve(address(x402), type(uint256).max);
+        // H2: register the spend policy so on-chain settlement is gated by a cap.
+        x402.updateSnapshot(policyId, payer, 0, 100 ether, 7 days);
     }
 
     /// Build an x402 exact payload, signed by the payer over the canonical action
