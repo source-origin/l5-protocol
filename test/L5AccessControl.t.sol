@@ -183,9 +183,8 @@ contract L5AccessControlTest is Test {
         bytes32 cid = escrow.openChannel{value: 5 ether}(address(rr));
         rr.arm(cid);
 
-        // sender(alice) 签名，结算 1 ether
-        bytes32 inner = keccak256(abi.encode(cid, uint256(1), uint256(1 ether)));
-        bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", inner));
+        // sender(alice) 签名，结算 1 ether（M3：凭证改绑域 EIP-712）
+        bytes32 digest = escrow.channelVoucherDigest(cid, 1, 1 ether);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(kAlice, digest);
         escrow.settleChannel(cid, 1, 1 ether, abi.encodePacked(r, s, v));
 

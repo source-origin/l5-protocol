@@ -27,6 +27,8 @@
 
 pragma solidity ^0.8.28;
 
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 /**
  * @title AgentAgreement
  * @notice AI Agent 之间的链上协议订立、签署、执行和结算
@@ -297,31 +299,16 @@ contract AgentAgreement {
     }
 
     /// @dev EIP-712 签名验证（替代旧 ecrecover + personal_sign）
+    /// M4 (2026-09-25): OZ ECDSA.tryRecover 强制规范 low-s 与 v∈{27,28}，
+    /// 使可延展（high-s）签名被直接拒绝（旧手写 ecrecover 无此校验）。
     function _verifyEIP712Signature(bytes32 structHash, bytes memory signature, address signer)
         internal
         view
         returns (bool)
     {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
-
-        require(signature.length == 65, "Agreement: invalid signature length");
-
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
-
-        if (v < 27) {
-            v += 27;
-        }
-
-        address recovered = ecrecover(digest, v, r, s);
-        return recovered == signer && recovered != address(0);
+        (address recovered, ECDSA.RecoverError err,) = ECDSA.tryRecover(digest, signature);
+        return err == ECDSA.RecoverError.NoError && recovered == signer && recovered != address(0);
     }
 
     // ═══════════════════════════════════════════════════

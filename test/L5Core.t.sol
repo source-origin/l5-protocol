@@ -277,9 +277,7 @@ contract L5CoreTest is Test {
         vm.prank(alice);
         bytes32 cid = escrow.openChannel{value: 5 ether}(bob);
 
-        bytes32 digest = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encode(cid, uint256(5), 3 ether)))
-        );
+        bytes32 digest = escrow.channelVoucherDigest(cid, 5, 3 ether);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(kBob, digest);
         vm.prank(bob);
         escrow.settleChannel(cid, 5, 3 ether, abi.encodePacked(r, s, v));
@@ -307,16 +305,12 @@ contract L5CoreTest is Test {
         vm.prank(alice);
         bytes32 cid = escrow.openChannel{value: 5 ether}(bob);
 
-        bytes32 lowDigest = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encode(cid, uint256(3), 0.5 ether)))
-        );
+        bytes32 lowDigest = escrow.channelVoucherDigest(cid, 3, 0.5 ether);
         (uint8 vl, bytes32 rl, bytes32 sl) = vm.sign(kBob, lowDigest);
         vm.prank(bob);
         escrow.settleChannel(cid, 3, 0.5 ether, abi.encodePacked(rl, sl, vl));
 
-        bytes32 highDigest = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encode(cid, uint256(8), 4 ether)))
-        );
+        bytes32 highDigest = escrow.channelVoucherDigest(cid, 8, 4 ether);
         (uint8 vh, bytes32 rh, bytes32 sh) = vm.sign(kBob, highDigest);
         vm.deal(alice, 1 ether);
         vm.prank(alice);

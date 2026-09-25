@@ -25,6 +25,7 @@ pragma solidity ^0.8.28;
 import "./AgentAgreement.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title AgentEscrow
@@ -181,11 +182,34 @@ contract AgentEscrow is Ownable, ReentrancyGuard {
     }
 
     //  ══════════════════════════════════════════════════
+    //  M3 (2026-09-25): domain-bound payment-channel vouchers.
+    // ══════════════════════════════════════════════════
+    bytes32 public constant CHANNEL_VOUCHER_TYPEHASH =
+        keccak256("ChannelVoucher(bytes32 channelId,uint256 nonce,uint256 amount)");
+    bytes32 private immutable _DOMAIN_SEPARATOR;
+
     //  CONSTRUCTOR
     // ══════════════════════════════════════════════════
     constructor(address _agentAgreement) Ownable(msg.sender) {
         require(_agentAgreement != address(0), "Escrow: zero address");
         agentAgreement = AgentAgreement(_agentAgreement);
+        _DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("ORIGIN L5 AgentEscrow"),
+                keccak256("1"),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
+
+    /// @notice M3: the domain-bound digest a channel party signs over a voucher.
+    /// @dev Binds (chainId, verifying contract), so a voucher cannot be replayed
+    ///      on another chain or another deployment of this contract.
+    function channelVoucherDigest(bytes32 channelId, uint256 nonce, uint256 amount) public view returns (bytes32) {
+        bytes32 structHash = keccak256(abi.encode(CHANNEL_VOUCHER_TYPEHASH, channelId, nonce, amount));
+        return keccak256(abi.encodePacked("\x19\x01", _DOMAIN_SEPARATOR, structHash));
     }
 
     //  ══════════════════════════════════════════════════
@@ -470,12 +494,11 @@ contract AgentEscrow is Ownable, ReentrancyGuard {
         require(finalNonce >= ch.nonce, "Channel: nonce rewind");
         require(cumulativeAmount <= ch.balance, "Channel: exceeds balance");
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n32", keccak256(abi.encode(channelId, finalNonce, cumulativeAmount))
-            )
-        );
+        bytes32 digest = channelVoucherDigest(channelId, finalNonce, cumulativeAmount);
         address signer = _recoverSigner(digest, signature);
+        // M3: either channel party may vouch -- the payer (sender) authorizes a
+        // release, the payee (receiver) claims one -- but the voucher must be
+        // domain-bound and low-s (see channelVoucherDigest / _recoverSigner).
         require(signer == ch.receiver || signer == ch.sender, "Channel: invalid signer");
 
         // === 不立即结算，进入挑战期 ===
@@ -531,11 +554,7 @@ contract AgentEscrow is Ownable, ReentrancyGuard {
         require(correctNonce > ch.nonce || correctAmount < ch.pendingAmount, "Channel: must prove better terms");
         require(block.timestamp < ch.settlingAt + challengePeriod, "Channel: challenge period expired");
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n32", keccak256(abi.encode(channelId, correctNonce, correctAmount))
-            )
-        );
+        bytes32 digest = channelVoucherDigest(channelId, correctNonce, correctAmount);
         address signer = _recoverSigner(digest, correctSignature);
         require(signer == ch.receiver, "Channel: signature must be from receiver");
 
@@ -577,21 +596,11 @@ contract AgentEscrow is Ownable, ReentrancyGuard {
         // ⚠️ 未来：调用 Axelar / LayerZero / IBC 协议进行实际跨链转账
     }
 
-    /// @dev ECDSA签名恢复
+    /// @dev ECDSA 签名恢复，强制规范 low-s 与 v∈{27,28}（OZ ECDSA.tryRecover）。
+    ///      M3 (2026-09-25)：可延展（high-s）或畸形签名一律返回 address(0)。
     function _recoverSigner(bytes32 digest, bytes memory signature) internal pure returns (address) {
-        require(signature.length == 65, "Channel: invalid signature");
-
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
-        if (v < 27) v += 27;
-        require(v == 27 || v == 28, "Channel: invalid v");
-
-        return ecrecover(digest, v, r, s);
+        (address recovered, ECDSA.RecoverError err,) = ECDSA.tryRecover(digest, signature);
+        if (err != ECDSA.RecoverError.NoError) return address(0);
+        return recovered;
     }
 }
