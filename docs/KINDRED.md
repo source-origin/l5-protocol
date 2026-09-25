@@ -25,8 +25,8 @@
 ### seancrecord — scvd.store
 - **Project:** [seancrecord/scvd-general-store-repo](https://github.com/seancrecord/scvd-general-store-repo) — an evidence observatory for agentic commerce (free preflight/conformance desk)
 - **Thread:** [scvd-general-store-repo#874](https://github.com/seancrecord/scvd-general-store-repo/issues/874)
-- **Convergence:** the same Boundary rule, from the authorization side — then read this repo's public tree against its own docs and surfaced concrete drift (contract count vs. tree, an unbacked CI claim, a test-count that didn't run).
-- **What changed here:** all findings fixed and reported back with commits (see `docs/ONEPAGER.md`, `README`).
+- **Convergence:** the same Boundary rule, from the authorization side — then read this repo's public tree against its own docs and surfaced concrete drift (contract count vs. tree, an unbacked CI claim, a test-count that didn't run; and, pointed at our own ledger, a `counted` flag whose rule said a receipt was *signed by* the key while the code only checked the key was *listed*).
+- **What changed here:** all findings fixed and reported back with commits (see `docs/ONEPAGER.md`, `README`). The last one was closed as a build, not a wording change: `tools/ledger.cjs` now asserts an Ed25519 signature (`crypto.verify()`) over the receipt bytes before an external entry can be `counted`, with `tools/ledger.test.cjs` red on their exact counter-example (`dce35c54f2`, `3375e7f642`).
 - **Status:** free preflight on the x402 door when it serves; conformance desk on receipts. (Thread: https://github.com/seancrecord/scvd-general-store-repo/issues/874) — *"point them at us when you have them."*
 
 ---
