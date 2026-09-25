@@ -39,7 +39,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 | **YUAN.sol** | ORIGIN native token | settlement unit for agent value flow |
 | **X402FacilitatorAdapter.sol** | x402 → L5x402 facilitator adapter | maps an x402 `exact` payload to a receipt; the `nonce` becomes the `requestId` (shared join key) |
 
-**Layout:** `src/` (9 contracts) · `test/` (15 suites / 128 tests) · `script/` (`DeployGovernance.s.sol` — 2-of-3 Safe + 48h timelock) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
+**Layout:** `src/` (9 contracts) · `test/` (18 suites / 145 tests) · `script/` (`DeployGovernance.s.sol` — 2-of-3 Safe + 48h timelock) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
 
 **Audit note:** contracts are a work-in-progress research-grade implementation. Do **not** use with real funds without a professional audit. A dated record of our own findings and fixes is kept in [`docs/SELF-AUDIT-2026-09-25.md`](docs/SELF-AUDIT-2026-09-25.md); how to report a vulnerability privately is in [`SECURITY.md`](SECURITY.md).
 
@@ -47,7 +47,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 
 ## 🧪 Tests (`test/`)
 
-Foundry suite — **128 tests, all passing** (`forge test`):
+Foundry suite — **145 tests, all passing** (`forge test`):
 
 - `L5Core.t.sol` (15) — identity, agreement + escrow lifecycle, payment channels, reputation
 - `L5Delegation.t.sol` (15) — delegated authority, revocation, boundary attestation; a delegated spend draws the delegator's budget within the policy caps (M2)
@@ -62,6 +62,9 @@ Foundry suite — **128 tests, all passing** (`forge test`):
 - `L5Governance.t.sol` (10) — 2-of-3 Safe + 48h `TimelockController`: delay enforced, one approval insufficient, no admin fast-path, handover completes only via the timelock (M1)
 - `L5Fuzz.t.sol` (10) — fuzz-verified invariants: spend never exceeds its caps, revocation/expiry are absolute walls, channel & escrow accounting conserve value exactly (256 runs each)
 - `L5x402Fuzz.t.sol` (6) — fuzz-verified authorization invariants: only the payer's own key settles, an expired or replayed authorization never does, and a settled receipt moves exactly the signed amount (256 runs each)
+- `YUANFuzz.t.sol` (7) — fuzz-verified issuance invariants: a provider's cumulative mint never exceeds its Foundation-set cap, an uncapped provider mints nothing, supply never exceeds MAX_SUPPLY, and burns are exact (256 runs each)
+- `CreditScoreFuzz.t.sol` (5) — fuzz-verified scoring invariants: the composite is always capped at SCORE_MAX, the limit is derived deterministically from the stored score, and punishment/contribution are monotone (256 runs each)
+- `X402AdapterFuzz.t.sol` (5) — fuzz-verified pass-through invariants: only a registered facilitator settles, malformed payloads are refused, an external rail stays Pending and moves nothing, an on-chain rail moves exactly the signed value, and the adapter never custodies funds (256 runs each)
 - `L5MintPolicy.t.sol` (9) — issuance authority + per-provider ceilings: uncapped provider mints nothing; the Foundation's cap is the market-responsive lever (M5)
 - `AgentAgreementV3Checkpoint.t.sol` (6) — crash-recoverable checkpoint execution
 
@@ -81,7 +84,7 @@ python demo/tests/test_l5_offchain.py         # off-chain test suite
 ```bash
 git submodule update --init --recursive   # pins forge-std + openzeppelin-contracts
 forge build --sizes
-forge test -vvv                            # expect: 128 passed, 0 failed
+forge test -vvv                            # expect: 145 passed, 0 failed
 ```
 
 ---

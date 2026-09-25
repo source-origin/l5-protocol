@@ -33,7 +33,7 @@
 | M2 | MEDIUM | `L5Delegation.spend` debit-semantics | ✅ resolved (draws the delegator's budget) | `L5Delegation.t.sol` |
 | M5 | MEDIUM | `YUAN` mint centralization | ✅ fixed (Foundation issuance caps) | `L5MintPolicy.t.sol` |
 
-Tests: **128 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9), `L5Governance.t.sol` (10), `L5Fuzz.t.sol` (10), `L5x402Fuzz.t.sol` (6).
+Tests: **145 passing / 0 failing / 0 skipped**. Suites added by this audit: `L5x402Hardening.t.sol` (9), `L5AccessControl.t.sol` (8), `L5SignatureHardening.t.sol` (5), `L5Adversarial.t.sol` (6), `L5Ownership.t.sol` (7), `L5MintPolicy.t.sol` (9), `L5Governance.t.sol` (10), `L5Fuzz.t.sol` (10), `L5x402Fuzz.t.sol` (6), `YUANFuzz.t.sol` (7), `CreditScoreFuzz.t.sol` (5), `X402AdapterFuzz.t.sol` (5).
 
 ---
 
@@ -195,22 +195,28 @@ None of these are silent: they are listed here so a reviewer can weigh them rath
 git clone --recursive https://github.com/source-origin/l5-protocol.git
 cd l5-protocol
 forge fmt --check      # clean
-forge test             # 128 passed, 0 failed
+forge test             # 145 passed, 0 failed
 ```
 
 Hostile-case discipline: every negative test in `L5Adversarial.t.sol` / `L5AccessControl.t.sol`
 must **fail closed, for the correct reason, independently** — a test that passes for the wrong
 revert string is treated as a defect.
 
-Fuzz discipline: [`L5Fuzz.t.sol`](../test/L5Fuzz.t.sol) and [`L5x402Fuzz.t.sol`](../test/L5x402Fuzz.t.sol)
-sweep the input domain (256 runs each) to assert the properties that matter — a delegated spend
-never exceeds its per-request or period cap and always draws the delegator's budget; revocation and
-expiry are absolute walls; a channel and an escrow each conserve value exactly; and an x402 receipt
-settles only under the payer's own fresh signature and moves exactly the signed amount (an expired
-or replayed authorization never settles, and without allowance it stays Pending, never Final).
+Fuzz discipline: [`L5Fuzz.t.sol`](../test/L5Fuzz.t.sol), [`L5x402Fuzz.t.sol`](../test/L5x402Fuzz.t.sol),
+[`YUANFuzz.t.sol`](../test/YUANFuzz.t.sol), [`CreditScoreFuzz.t.sol`](../test/CreditScoreFuzz.t.sol)
+and [`X402AdapterFuzz.t.sol`](../test/X402AdapterFuzz.t.sol) sweep the input domain (256 runs each) to
+assert the properties that matter — a delegated spend never exceeds its per-request or period cap and
+always draws the delegator's budget; revocation and expiry are absolute walls; a channel and an escrow
+each conserve value exactly; an x402 receipt settles only under the payer's own fresh signature and
+moves exactly the signed amount (an expired or replayed authorization never settles, and without
+allowance it stays Pending, never Final); a provider's cumulative YUAN mint never exceeds its
+Foundation-set cap and an uncapped provider mints nothing; the credit composite is always capped at
+SCORE_MAX and punishment/contribution are monotone; and the x402 facilitator adapter is a pure
+pass-through that never custodies funds (an external-rail payload records evidence but stays Pending).
 Example-based tests pin the edges; fuzz shows the edges are not special. (Note for authors: under
 `via_ir` the optimizer may treat `block.timestamp` as constant within a call frame, so derive a past
-deadline arithmetically after `vm.warp` rather than relying on a pre-warp read.)
+deadline arithmetically after `vm.warp` rather than relying on a pre-warp read; and compute a signature
+before `vm.expectRevert`, since an inline staticcall would otherwise consume the pending cheatcode.)
 
 ---
 
