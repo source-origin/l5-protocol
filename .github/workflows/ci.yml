@@ -24,3 +24,18 @@ jobs:
 
       - name: Test
         run: forge test -vv
+
+  ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ledger schema
+        run: node tools/ledger.cjs check
+
+      - name: Ledger verifier test
+        run: node tools/ledger.test.cjs
