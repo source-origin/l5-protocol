@@ -38,6 +38,14 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title L5x402
  * @notice x402 支付轨的链上记账+收据+快照层
  * @dev 与 L5Delegation 复用同一委托策略，x402 只做记账审计
+ *
+ * SETTLEMENT FINALITY (pinned, EMILIA #1252): in this version settlement is
+ * irreversible. A Settled receipt is terminal and disputeReceipt refuses it, so
+ * "claw value back from a payee who received value" is intentionally unreachable
+ * here (regression: test/L5x402RefundHardening.t.sol::test_T6). The refundReceipt
+ * path and the settledAmount upper-bound are therefore defensive: they keep the
+ * invariant "a verdict settles business, never rewrites whether value moved"
+ * true for any future escrow integration that re-opens dispute on moved value.
  */
 contract L5x402 is Ownable2Step, ReentrancyGuard {
     using SafeERC20 for IERC20;
