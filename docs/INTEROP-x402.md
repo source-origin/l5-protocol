@@ -161,7 +161,7 @@ EMILIA asked whether a receipt should carry a forward reference to a verdict tha
 **Test evidence.** `forge test` → **79 passed, 0 failed** across 9 suites:
 `L5x402.t.sol` (11), `L5Finality.t.sol` (6), `L5x402Adapter.t.sol` (5), `L5Adversarial.t.sol` (6), `L5x402Hardening.t.sol` (9) — plus the pre-existing core/nucleus/checkpoint/delegation/access-control suites.
 
-**Note on EMILIA's reference suite.** `_emilia_ref/test_outcome_binding.py`, `test_role_non_substitution.py`, `test_timestamp_proof.py` import `emilia_verify` and load `conformance/vectors/*.json` — neither is redistributed here, so they cannot be executed in this repo. Rather than assert a pass we did not run, we mirrored their named refusal vectors (`reject_resigned_action_swap`, `reject_resigned_receipt_bytes_swap`, `reject_resigned_consumption_nonce_swap`, `reject_unpinned_executor`, role non-substitution, digest-binds-before-signature, never-raise-on-garbage) as EVM tests in `test/L5Adversarial.t.sol`. Each fails closed, for the right reason.
+**Note on EMILIA's reference suite.** *(Corrected 2026-10-02.)* An earlier version of this note said the suite "cannot be executed in this repo". That was wrong, and we ran it. At Iman's pin `f26bc50f789b068986e9a0ffdd02fa4391c037fa` (`emiliaprotocol/emilia-protocol`) we installed the packaged verifier (`pip install -e packages/python-verify` → `emilia-verify 2.8.6`) and executed the three named files — `test_outcome_binding.py`, `test_role_non_substitution.py`, `test_timestamp_proof.py` — against their `conformance/vectors/*.json`: **22/22 passed**. That is an actual conformance run against EMILIA's vectors, not a parallel-terminology assertion. In addition, we mirror their named refusal vectors (`reject_resigned_action_swap`, `reject_resigned_receipt_bytes_swap`, `reject_resigned_consumption_nonce_swap`, `reject_unpinned_executor`, role non-substitution, digest-binds-before-signature, never-raise-on-garbage) as EVM tests in `test/L5Adversarial.t.sol`, each failing closed for the right reason.
 
 ## 8. Self-audit hardening — H2 / H3 / H4 (2026-09-25)
 
@@ -174,6 +174,8 @@ After the P0 work we ran a full self-audit of all eight contracts. `forge test` 
 | **H4** | `attachVerdict` / `recordPostHocVerdict(isFinal)` / `markProvisional` could assert finality on a receipt whose value had **never moved**. | A verdict may only render **final** an action whose value actually moved: `attachVerdict` requires `Settled`, `recordPostHocVerdict(isFinal)` requires `Settled`/`Refunded`, and `markProvisional` refuses an `Open` receipt (`"L5x402: value not moved"`). |
 
 **Still open (deliberate, not accidental):** a `Settled` receipt cannot be disputed (`disputeReceipt` refuses it); the contract treats a settled release as terminal *by design*. That is a **design decision**, flagged for the owner, not silently changed here. The single `onlyAdmin` key on the adjudication path is the other open seam (§5).
+
+**Closed 2026-10-02 (EMILIA #1252).** `disputeReceipt` now refuses **every** terminal state — `Settled`, `Failed`, `Refunded` — not just `Settled`. Only `Pending`/`Disputed` receipts may enter the dispute path; a terminal receipt has no second verdict to route to. Regression: `test/L5x402RefundHardening.t.sol::test_T8_FailedReceipt_CannotBeDisputed`.
 
 **Test evidence.** `forge test` -> **79 passed, 0 failed** (was 70); `forge fmt --check` clean.
 

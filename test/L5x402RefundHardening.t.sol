@@ -156,4 +156,23 @@ contract L5x402RefundHardeningTest is Test {
         vm.expectRevert("L5x402: value not moved");
         x402.recordPostHocVerdict(rid, keccak256("verdict"), true);
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // EMILIA #1252 · only non-terminal receipts may enter dispute
+    // ═══════════════════════════════════════════════════════════
+
+    // T8: a terminal Failed receipt has no second verdict to route to — dispute refuses it.
+    // (Refunded is terminal in every version too; it is unreachable-by-construction here,
+    //  since dispute refuses Settled, so its refusal is defensive — same shape as T6.)
+    function test_T8_FailedReceipt_CannotBeDisputed() public {
+        bytes32 rid = _recordPending();
+        vm.prank(admin);
+        x402.disputeReceipt(rid, "dispute");
+        vm.prank(admin);
+        x402.voidReceipt(rid);
+        assertEq(uint256(x402.getReceipt(rid).status), uint256(L5x402.ReceiptStatus.Failed));
+        vm.prank(admin);
+        vm.expectRevert("L5x402: already settled");
+        x402.disputeReceipt(rid, "second bite");
+    }
 }

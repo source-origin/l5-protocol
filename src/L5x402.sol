@@ -445,7 +445,14 @@ contract L5x402 is Ownable2Step, ReentrancyGuard {
     function disputeReceipt(bytes32 _receiptId, string calldata _reason) external onlyAdmin returns (bool) {
         PaymentReceipt storage r = receipts[_receiptId];
         require(r.receiptId != bytes32(0), "L5x402: no receipt");
-        require(r.status != ReceiptStatus.Settled, "L5x402: already settled");
+        // EMILIA #1252: a terminal receipt has no second verdict to route to.
+        // Settled is terminal by design in this version (settlement == finality);
+        // Failed and Refunded are terminal in every version. Only Pending and
+        // Disputed receipts may enter the dispute path.
+        require(
+            r.status != ReceiptStatus.Settled && r.status != ReceiptStatus.Failed && r.status != ReceiptStatus.Refunded,
+            "L5x402: already settled"
+        );
         r.status = ReceiptStatus.Disputed;
         // 🆕 a never-moved receipt has no finality to claim: only a receipt whose
         // value actually moved may be marked ProvisionalSubjectToVerdict. A Pending
