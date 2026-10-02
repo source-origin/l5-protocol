@@ -1,0 +1,78 @@
+{
+  "types": {
+    "EIP712Domain": [
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "version",
+        "type": "string"
+      },
+      {
+        "name": "chainId",
+        "type": "uint256"
+      },
+      {
+        "name": "verifyingContract",
+        "type": "address"
+      }
+    ],
+    "PaymentAction": [
+      {
+        "name": "requestId",
+        "type": "bytes32"
+      },
+      {
+        "name": "payer",
+        "type": "address"
+      },
+      {
+        "name": "payee",
+        "type": "address"
+      },
+      {
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "name": "routeHash",
+        "type": "bytes32"
+      },
+      {
+        "name": "payloadHash",
+        "type": "bytes32"
+      },
+      {
+        "name": "permissionHash",
+        "type": "bytes32"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256"
+      }
+    ]
+  },
+  "primaryType": "PaymentAction",
+  "domain": {
+    "name": "ORIGIN L5 x402",
+    "version": "1",
+    "chainId": 1,
+    "verifyingContract": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+  },
+  "message": {
+    "requestId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "payer": "0x1111111111111111111111111111111111111111",
+    "payee": "0x2222222222222222222222222222222222222222",
+    "token": "0x3333333333333333333333333333333333333333",
+    "amount": "1000000",
+    "routeHash": "0x9b5215b2f5a871587ede9f445b7fcb0cd711917bd25ae426960bb280e5092550",
+    "payloadHash": "0x46286e2ec0c2f8823daec9bbcce80d03dd88231e9217fb8fb597814795192233",
+    "permissionHash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+    "deadline": "1799999999"
+  }
+}

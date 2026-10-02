@@ -1,0 +1,139 @@
+{
+  "pinned_commit": "be9ed4d",
+  "domain": {
+    "name": "ORIGIN L5 x402",
+    "version": "1",
+    "chainId": 1,
+    "verifyingContract": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+  },
+  "domain_separator": "0xe38ae5c5242669b1bc6dcbd9525f521a53e788bb9bb35b3019f9da3997e34d07",
+  "typehashes": {
+    "domain": "0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f",
+    "payment_action": "0x6e6111c67a57c2b5740caac6a284e58cc67a60d59ba69a9525f5c752bd8b68c8"
+  },
+  "material_fields": [
+    "requestId",
+    "payer",
+    "payee",
+    "token",
+    "amount",
+    "routeHash",
+    "payloadHash",
+    "permissionHash",
+    "deadline"
+  ],
+  "action": {
+    "requestId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "payer": "0x1111111111111111111111111111111111111111",
+    "payee": "0x2222222222222222222222222222222222222222",
+    "token": "0x3333333333333333333333333333333333333333",
+    "amount": "1000000",
+    "route": "POST /v1/infer",
+    "routeHash": "0x9b5215b2f5a871587ede9f445b7fcb0cd711917bd25ae426960bb280e5092550",
+    "payload": {
+      "model": "origin-l5",
+      "prompt": "ping"
+    },
+    "payloadHash": "0x46286e2ec0c2f8823daec9bbcce80d03dd88231e9217fb8fb597814795192233",
+    "permissionHash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+    "deadline": "1799999999"
+  },
+  "off_chain": {
+    "canonicalization": "RFC 8785 JCS (UTF-8, sorted keys, no insignificant whitespace)",
+    "action_jcs": "{\"amount\":\"1000000\",\"deadline\":\"1799999999\",\"payee\":\"0x2222222222222222222222222222222222222222\",\"payer\":\"0x1111111111111111111111111111111111111111\",\"payloadHash\":\"0x46286e2ec0c2f8823daec9bbcce80d03dd88231e9217fb8fb597814795192233\",\"permissionHash\":\"0x5555555555555555555555555555555555555555555555555555555555555555\",\"requestId\":\"0x1111111111111111111111111111111111111111111111111111111111111111\",\"route\":\"POST /v1/infer\",\"routeHash\":\"0x9b5215b2f5a871587ede9f445b7fcb0cd711917bd25ae426960bb280e5092550\",\"token\":\"0x3333333333333333333333333333333333333333\"}",
+    "action_sha256": "0x9a8682c5d4f4575fadba526eab765fd9bbbcc9384bbf48e55e985d9a32a22de7",
+    "payload_jcs": "{\"model\":\"origin-l5\",\"prompt\":\"ping\"}",
+    "sha256_jcs_payload": "0xec6787e3f2c80ae11bcbd4a421a7b3d408fbb4fab0aab68b0b8ad1431d06a128"
+  },
+  "on_chain": {
+    "encoding": "EIP-712 typed data, full enumeration",
+    "action_struct_hash": "0x17af7f2655d8faf85f5d31d2a0cfaa22e93e6a8ad4a805226683b6f3c9b71493",
+    "action_digest_keccak": "0x7bf8a675c9007ec852020d94234e3094f1bb0cb84b1a1dd326ca3d78207823e5"
+  },
+  "binding_probe": {
+    "note": "mutate ONE field at a time; both digests must change. Equal field sets => same action is bound, encodings still differ.",
+    "mutations": [
+      {
+        "field": "requestId",
+        "new_value": "0x1212121212121212121212121212121212121212121212121212121212121212",
+        "jcs_sha256": "0x4c56c98656a11225b9fba1f4dae244a4ceafbe1b0c308a6ba57a918aac79378a",
+        "eip712_struct_hash": "0x2e7af9267f26466df1fe5ad4438ce6a63ffa1f6d94b9484373077f4c25baeb57",
+        "eip712_keccak": "0x695c3f51b757fa7ea51add4585490fb47318b8b56b0efcf7c97de1a1f2c15739",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "payer",
+        "new_value": "0x1111111111111111111111111111111111111112",
+        "jcs_sha256": "0xc8e45c9ba0b9ceca133226dd8cb0c31c06dd948336dcd054a195b7c5b7513659",
+        "eip712_struct_hash": "0x25f6946ab3168443cce380596f13d99c7aa1d055e4e7f9841372b70eb4888d25",
+        "eip712_keccak": "0x22f70a342686d8a49032562d917a64f5c3cc7543e4b32c4c312e3177cb974aa5",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "payee",
+        "new_value": "0x2222222222222222222222222222222222222223",
+        "jcs_sha256": "0x9cd92ec213a670c08ec54442f4f84a38c09b4d332081ce1dac96ffa5cd6e03fc",
+        "eip712_struct_hash": "0x058f95025958d69a10cf05152e8ae5d641bece0b4a902fcfe8570dfb9b02a392",
+        "eip712_keccak": "0xdd96523cf968ddd85820f10c133b5fac6953c7708714096f3c4eb1d49a5de424",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "token",
+        "new_value": "0x3333333333333333333333333333333333333334",
+        "jcs_sha256": "0xb5b406c4021fcfb48b9ede2f053c8b591a60b2eaf1838e058ef91957ef2c1e8f",
+        "eip712_struct_hash": "0x46ce4ae86f08dbd1508001d29b3e6112f9137e319aee46f3c62cb9320d08f0c6",
+        "eip712_keccak": "0x65e070e4b9bbad5fd6962d8760f4936a72cb0301e40b98b844fbaf94655b13da",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "amount",
+        "new_value": "1000001",
+        "jcs_sha256": "0xc7469d113a0f85570407500f9f319c019fe5f14774eb0ac4b7eb68504ca70276",
+        "eip712_struct_hash": "0x25d96b6a67cb0b7643ec0a6701483e08b8b2fdc36c2fa2901dc063ca9f961489",
+        "eip712_keccak": "0x53884d692af1224adf78577a269c833bdc16d539ea6f955394eef877bc00b0bc",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "routeHash",
+        "new_value": "0x6666666666666666666666666666666666666666666666666666666666666666",
+        "jcs_sha256": "0x403b71af5ba8ad5af79ecc1f8937b4d028f02411c46b7e3bc1eddafba6f6a515",
+        "eip712_struct_hash": "0x6734a9e28107318bdb5974db2e71bf1382b8ff4ebf8985feb8a8221b547d0a93",
+        "eip712_keccak": "0x04937da09305509db8b232617210d8dcb7415f2b4fa9139a693fbec1c054b6b4",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "payloadHash",
+        "new_value": "0x7777777777777777777777777777777777777777777777777777777777777777",
+        "jcs_sha256": "0x9d269b2fcaee347a0e30e092be75d374d1f4ee99cd78a37d32a6a11b6f58b26d",
+        "eip712_struct_hash": "0x9c3d8dbacf9fea8af61b5c45f16939d6afc11338799d750fd7481c5eda43cff5",
+        "eip712_keccak": "0xf9234fd937275387a5eb4efc76ff2be11e16364bc185eba3743b91578ae56291",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "permissionHash",
+        "new_value": "0x8888888888888888888888888888888888888888888888888888888888888888",
+        "jcs_sha256": "0x3dcb36c2950a91acf32706fe2ca53563387de96224486560c46239ac2ecdfc94",
+        "eip712_struct_hash": "0x3c0c9c91de4d29309c92b9a61d27390a713e81c7e54415b6ef028c1791928c66",
+        "eip712_keccak": "0x4987ac1b32a615240a82752db50b14e4390559ef0f741e38141619af905c740f",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      },
+      {
+        "field": "deadline",
+        "new_value": "1800000000",
+        "jcs_sha256": "0x63044124216d4bd8f8e2773164053f28a65bb181ff8aa2498b2fe25e392aa47b",
+        "eip712_struct_hash": "0x537fd7d311ca185378205795b47abe660dc5dcb8c580f49f882a8e69cd7c5d3e",
+        "eip712_keccak": "0x17e1489c36a90215f58cb10d08bc5567a8508302e53ecdd4d78b0172adb69cd7",
+        "off_chain_changed": true,
+        "on_chain_changed": true
+      }
+    ]
+  }
+}
