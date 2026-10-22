@@ -301,7 +301,13 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     function release(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) {
         Escrow storage esc = escrows[escrowId];
         require(msg.sender == esc.payer, "Escrow: only payer can release");
+        _release(escrowId, esc);
+    }
 
+    /// @dev Internal release path. settle() must call this, never this.release():
+    ///      an external self-call makes msg.sender == address(this), so the
+    ///      "only payer" guard can never pass and settle() would revert always.
+    function _release(bytes32 escrowId, Escrow storage esc) internal {
         uint256 amount = esc.amount;
         esc.state = EscrowState.Released;
         esc.releasedAt = block.timestamp;
@@ -319,7 +325,9 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
 
     /// @notice Consumer在Verified后确认结算（与release等价但更语义化）
     function settle(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) {
-        this.release(escrowId);
+        Escrow storage esc = escrows[escrowId];
+        require(msg.sender == esc.payer, "Escrow: only payer can release");
+        _release(escrowId, esc);
     }
 
     /// @notice 退款：超时或Consumer取消
@@ -336,11 +344,18 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
 
         uint256 amount = esc.amount;
 
+        // A refund is terminal. BOTH branches must land in Cancelled.
+        // The timeout branch used to set Verified -- the exact state release()
+        // requires -- and esc.amount was never cleared. So after a third-party
+        // keeper triggered the timeout refund, the payer could still call
+        // release() and have the provider paid out of OTHER escrows' funds,
+        // leaving the contract insolvent.
+        // Regression: test/TimeoutReleaseDoubleSpend.t.sol
+        esc.state = EscrowState.Cancelled;
+
         if (isCancellation) {
-            esc.state = EscrowState.Cancelled;
             emit EscrowCancelled(escrowId, msg.sender, block.timestamp);
         } else {
-            esc.state = EscrowState.Verified;
             emit EscrowTimeout(escrowId, esc.deadline, block.timestamp);
         }
 

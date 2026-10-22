@@ -1,0 +1,605 @@
+{
+  "schema": "origin-l5-escrow-matrix/1",
+  "generated": "2026-10-22",
+  "purpose": "The nine synthetic escrow cases requested in NSPG13/agent-bounties#1478, expressed as observable event logs plus an explicit expected verdict, so a third party can falsify our claims without trusting either side.",
+  "synthetic": true,
+  "notes": [
+    "All addresses, ids, amounts are synthetic. No account, no key, no stake, no wallet, no node is needed.",
+    "A case supplies only what an outside observer can see: the escrow's public fields and the event log.",
+    "The verifier logic under test is fixtures/run_matrix.py, a reference model of src/AgentEscrow.sol at the pinned commit. It is NOT an on-chain run. For two rows the real contract behaviour is additionally pinned by Foundry tests, named in `pins`.",
+    "Row semantics: supported = the events are sufficient to establish the claim; rejected = the events contradict the claim; indistinguishable = the events are insufficient either way. Nothing is rounded up to supported."
+  ],
+  "cases": [
+    {
+      "id": "C1-funded-not-delivered",
+      "title": "Funded, the provider never claims delivery, the deadline passes, the payer is refunded",
+      "agreement": {
+        "id": "0xagr-c1",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Executed"
+      },
+      "escrow": {
+        "id": "0xesc-c1",
+        "agreementId": "0xagr-c1",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Cancelled",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c1",
+          "agreementId": "0xagr-c1",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c1",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowTimeout",
+          "escrowId": "0xesc-c1",
+          "deadline": 1000,
+          "at": 1001
+        },
+        {
+          "seq": 4,
+          "type": "EscrowRefunded",
+          "escrowId": "0xesc-c1",
+          "payer": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 1001
+        }
+      ],
+      "claim": {
+        "kind": "funds-returned-to-payer",
+        "escrowId": "0xesc-c1",
+        "recipient": "0xA11CE",
+        "amount": "5000000000000000000"
+      },
+      "expected": "supported",
+      "controls": [],
+      "pins": [
+        "L5Core.t.sol::test_EscrowRefund_Timeout"
+      ]
+    },
+    {
+      "id": "C2-funded-not-delivered-then-release",
+      "title": "Same as C1, but the payer then calls release() to pay the provider anyway",
+      "agreement": {
+        "id": "0xagr-c2",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Completed"
+      },
+      "escrow": {
+        "id": "0xesc-c2",
+        "agreementId": "0xagr-c2",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Cancelled",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c2",
+          "agreementId": "0xagr-c2",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c2",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowTimeout",
+          "escrowId": "0xesc-c2",
+          "deadline": 1000,
+          "at": 1001
+        },
+        {
+          "seq": 4,
+          "type": "EscrowRefunded",
+          "escrowId": "0xesc-c2",
+          "payer": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 1001
+        }
+      ],
+      "claim": {
+        "kind": "provider-paid",
+        "escrowId": "0xesc-c2",
+        "recipient": "0xB0B",
+        "amount": "5000000000000000000"
+      },
+      "expected": "rejected",
+      "controls": [],
+      "pins": [
+        "TimeoutReleaseDoubleSpend.t.sol::test_TimeoutRefundByStranger_CannotThenRelease"
+      ],
+      "found": "This row was FAILING before 2026-10-22: the timeout branch set state to Verified, the state release() requires, and left esc.amount intact, so the provider was paid a second time out of another escrow's funds."
+    },
+    {
+      "id": "C3-delivered-not-settled",
+      "title": "The provider claims delivery and verifies; the payer has not released yet",
+      "agreement": {
+        "id": "0xagr-c3",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Completed"
+      },
+      "escrow": {
+        "id": "0xesc-c3",
+        "agreementId": "0xagr-c3",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Verified",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c3",
+          "agreementId": "0xagr-c3",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c3",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowVerified",
+          "escrowId": "0xesc-c3",
+          "proofOfDelivery": "0xdeadbeef",
+          "at": 20
+        }
+      ],
+      "claim": {
+        "kind": "provider-paid",
+        "escrowId": "0xesc-c3",
+        "recipient": "0xB0B",
+        "amount": "5000000000000000000"
+      },
+      "expected": "rejected",
+      "controls": [],
+      "pins": [
+        "L5Core.t.sol::test_ReleaseBeforeVerify_Fails"
+      ]
+    },
+    {
+      "id": "C4-delivered-and-settled",
+      "title": "Delivered, verified, released: the provider is paid exactly once",
+      "agreement": {
+        "id": "0xagr-c4",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Settled"
+      },
+      "escrow": {
+        "id": "0xesc-c4",
+        "agreementId": "0xagr-c4",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Released",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c4",
+          "agreementId": "0xagr-c4",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c4",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowVerified",
+          "escrowId": "0xesc-c4",
+          "proofOfDelivery": "0xdeadbeef",
+          "at": 20
+        },
+        {
+          "seq": 4,
+          "type": "EscrowReleased",
+          "escrowId": "0xesc-c4",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 30
+        }
+      ],
+      "claim": {
+        "kind": "provider-paid",
+        "escrowId": "0xesc-c4",
+        "recipient": "0xB0B",
+        "amount": "5000000000000000000"
+      },
+      "expected": "supported",
+      "controls": [],
+      "pins": [
+        "TimeoutReleaseDoubleSpend.t.sol::test_Settle_ReleasesToProvider"
+      ]
+    },
+    {
+      "id": "C5-settled-to-wrong-solver",
+      "title": "Control: wrong recipient. The release event pays a different address than the escrow's payee",
+      "agreement": {
+        "id": "0xagr-c5",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Completed"
+      },
+      "escrow": {
+        "id": "0xesc-c5",
+        "agreementId": "0xagr-c5",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Released",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c5",
+          "agreementId": "0xagr-c5",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c5",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowVerified",
+          "escrowId": "0xesc-c5",
+          "proofOfDelivery": "0xdeadbeef",
+          "at": 20
+        },
+        {
+          "seq": 4,
+          "type": "EscrowReleased",
+          "escrowId": "0xesc-c5",
+          "payee": "0xC0FFEE",
+          "amount": "5000000000000000000",
+          "at": 30
+        }
+      ],
+      "claim": {
+        "kind": "provider-paid",
+        "escrowId": "0xesc-c5",
+        "recipient": "0xC0FFEE",
+        "amount": "5000000000000000000"
+      },
+      "expected": "rejected",
+      "controls": [
+        "wrong-recipient"
+      ],
+      "controls_explain": "The claimed recipient C0FFEE is not the escrow payee. The reference model reports this row as contradicted by the escrow's own identity fields, not by the event payload alone.",
+      "pins": []
+    },
+    {
+      "id": "C6-duplicate-event",
+      "title": "Control: duplicate event. Two EscrowReleased for a single escrow",
+      "agreement": {
+        "id": "0xagr-c6",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Settled"
+      },
+      "escrow": {
+        "id": "0xesc-c6",
+        "agreementId": "0xagr-c6",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Released",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c6",
+          "agreementId": "0xagr-c6",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c6",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowVerified",
+          "escrowId": "0xesc-c6",
+          "proofOfDelivery": "0xdeadbeef",
+          "at": 20
+        },
+        {
+          "seq": 4,
+          "type": "EscrowReleased",
+          "escrowId": "0xesc-c6",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 30
+        },
+        {
+          "seq": 5,
+          "type": "EscrowReleased",
+          "escrowId": "0xesc-c6",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 31
+        }
+      ],
+      "claim": {
+        "kind": "provider-paid-twice",
+        "escrowId": "0xesc-c6",
+        "recipient": "0xB0B",
+        "amount": "10000000000000000000"
+      },
+      "expected": "rejected",
+      "controls": [
+        "duplicate-event"
+      ],
+      "controls_explain": "A second release from Released is impossible: release() is gated on state Verified. The duplicate sequence is rejected as an inconsistent log rather than counted as two payments.",
+      "pins": []
+    },
+    {
+      "id": "C7-interrupted-claim",
+      "title": "Control: interrupted claim. Delivery verified, then the payer tries to refund",
+      "agreement": {
+        "id": "0xagr-c7",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Completed"
+      },
+      "escrow": {
+        "id": "0xesc-c7",
+        "agreementId": "0xagr-c7",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Verified",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c7",
+          "agreementId": "0xagr-c7",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c7",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowVerified",
+          "escrowId": "0xesc-c7",
+          "proofOfDelivery": "0xdeadbeef",
+          "at": 20
+        }
+      ],
+      "claim": {
+        "kind": "funds-returned-to-payer",
+        "escrowId": "0xesc-c7",
+        "recipient": "0xA11CE",
+        "amount": "5000000000000000000"
+      },
+      "expected": "rejected",
+      "controls": [
+        "interrupted-claim"
+      ],
+      "controls_explain": "After Verified, refund() reverts on 'Escrow: cannot refund' (both branches require state Funded). Delivery can no longer be withdrawn unilaterally.",
+      "pins": [
+        "TimeoutReleaseDoubleSpend.t.sol::test_Control_VerifiedEscrowCannotRefund"
+      ]
+    },
+    {
+      "id": "C8-withheld-claim",
+      "title": "Control: withheld claim. The same log as C1, but the claim is that no delivery claim was ever made",
+      "agreement": {
+        "id": "0xagr-c8",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Executed"
+      },
+      "escrow": {
+        "id": "0xesc-c8",
+        "agreementId": "0xagr-c8",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Cancelled",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c8",
+          "agreementId": "0xagr-c8",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c8",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowTimeout",
+          "escrowId": "0xesc-c8",
+          "deadline": 1000,
+          "at": 1001
+        },
+        {
+          "seq": 4,
+          "type": "EscrowRefunded",
+          "escrowId": "0xesc-c8",
+          "payer": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 1001
+        }
+      ],
+      "claim": {
+        "kind": "no-delivery-claim-was-made",
+        "escrowId": "0xesc-c8"
+      },
+      "expected": "indistinguishable",
+      "controls": [
+        "withheld-claim"
+      ],
+      "controls_explain": "THE OPEN GAP. This log is byte-identical in shape to C1. EscrowTimeout establishes a contract state (deadline passed while still Funded); it is not a signed statement of non-delivery. 'No claim was made' and 'a claim was made and withheld' produce the same observable log, so neither can be concluded. Closing this requires signed non-delivery or a claim-inclusion proof, which does not exist today.",
+      "pins": []
+    },
+    {
+      "id": "C9-cancelled-then-release",
+      "title": "Payer cancels before delivery, then tries to release",
+      "agreement": {
+        "id": "0xagr-c9",
+        "consumer": "0xA11CE",
+        "provider": "0xB0B",
+        "totalValue": "5000000000000000000",
+        "state": "Cancelled"
+      },
+      "escrow": {
+        "id": "0xesc-c9",
+        "agreementId": "0xagr-c9",
+        "payer": "0xA11CE",
+        "payee": "0xB0B",
+        "amount": "5000000000000000000",
+        "state": "Cancelled",
+        "deadline": 1000
+      },
+      "events": [
+        {
+          "seq": 1,
+          "type": "EscrowCreated",
+          "escrowId": "0xesc-c9",
+          "agreementId": "0xagr-c9",
+          "payer": "0xA11CE",
+          "payee": "0xB0B",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 2,
+          "type": "EscrowFunded",
+          "escrowId": "0xesc-c9",
+          "funder": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 10
+        },
+        {
+          "seq": 3,
+          "type": "EscrowCancelled",
+          "escrowId": "0xesc-c9",
+          "canceller": "0xA11CE",
+          "at": 500
+        },
+        {
+          "seq": 4,
+          "type": "EscrowRefunded",
+          "escrowId": "0xesc-c9",
+          "payer": "0xA11CE",
+          "amount": "5000000000000000000",
+          "at": 500
+        }
+      ],
+      "claim": {
+        "kind": "provider-paid",
+        "escrowId": "0xesc-c9",
+        "recipient": "0xB0B",
+        "amount": "5000000000000000000"
+      },
+      "expected": "rejected",
+      "controls": [],
+      "pins": [
+        "TimeoutReleaseDoubleSpend.t.sol::test_Control_PayerRefundLandsInCancelled"
+      ]
+    }
+  ]
+}
