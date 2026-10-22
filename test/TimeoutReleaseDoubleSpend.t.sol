@@ -73,16 +73,10 @@ contract TimeoutReleaseDoubleSpendTest is Test {
     function _parties(address consumer) internal view returns (AgentAgreement.AgentParty[] memory p) {
         p = new AgentAgreement.AgentParty[](2);
         p[0] = AgentAgreement.AgentParty({
-            agentAddr: consumer,
-            role: AgentAgreement.PartyRole.Consumer,
-            signature: new bytes(0),
-            signedAt: 0
+            agentAddr: consumer, role: AgentAgreement.PartyRole.Consumer, signature: new bytes(0), signedAt: 0
         });
         p[1] = AgentAgreement.AgentParty({
-            agentAddr: bob,
-            role: AgentAgreement.PartyRole.Provider,
-            signature: new bytes(0),
-            signedAt: 0
+            agentAddr: bob, role: AgentAgreement.PartyRole.Provider, signature: new bytes(0), signedAt: 0
         });
     }
 
