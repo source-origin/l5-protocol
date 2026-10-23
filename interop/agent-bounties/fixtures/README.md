@@ -11,8 +11,9 @@ no live payment is involved or required.
 
 | File | Role |
 | --- | --- |
-| `matrix.json` | Nine cases. Each has a declared escrow identity, an event log, a claim, and an expected verdict. |
-| `run_matrix.py` | Reference checker. Replays each log through the escrow state machine and classifies the claim. |
+| `escrow_9_cases.json` | Nine cases. Each has a declared escrow identity, an event log, a claim, and an expected verdict. |
+| `run_matrix.py` | Reference checker. Replays each log through the escrow state machine and classifies the claim. Now runs the mutation controls too (see below). |
+| `controls_mutations.json` | The four offline controls NSPG13 asked to tighten, as deliberate fixture corruptions the checker must catch. |
 
 ## What a row contains
 
@@ -33,13 +34,16 @@ with it.
 ## Run it
 
 ```
-python fixtures/run_matrix.py            # table
-python fixtures/run_matrix.py --json     # machine-readable rows
-python fixtures/run_matrix.py --verbose  # per-event state trace
+python fixtures/run_matrix.py              # table
+python fixtures/run_matrix.py --json       # machine-readable rows
+python fixtures/run_matrix.py --verbose    # per-event state trace
+python fixtures/run_matrix.py --controls   # run the mutation controls (0/1)
 ```
 
 Exit code is 0 only when every row's computed verdict equals its expected
-verdict **and** every pin resolves to a test function that exists.
+verdict **and** every pin resolves to a test function that exists. The exit
+status is computed **once, before either output branch**, so the text table and
+`--json` can never disagree about whether the run is red.
 
 ## The nine cases
 
@@ -54,6 +58,35 @@ verdict **and** every pin resolves to a test function that exists.
 | C7 | verified delivery, then a refund is attempted | rejected | interrupted-claim |
 | C8 | same log as C1, claim is "no delivery claim was made" | indistinguishable | withheld-claim |
 | C9 | payer cancels before delivery, then tries to release | rejected | |
+
+## Offline controls (the three NSPG13 flagged, plus one more)
+
+`run_matrix.py --controls` applies each `controls_mutations.json` entry as a
+deliberate corruption of a baseline case, then requires the checker to catch it.
+A control passes only when the checker returns the stated verdict **after** the
+mutation; if the checker still agrees with the pre-mutation claim, the control
+fails and the run is red. These corruptions are never part of the nine-row
+matrix and never inflate its counts.
+
+| Control | Baseline | What it changes | Required verdict |
+| --- | --- | --- | --- |
+| `M1-exit-status-branch` | C1 | force a row mismatch, compare text vs `--json` exit | nonzero in both branches |
+| `M2-c4-foreign-escrow-id` | C4 | `EscrowCreated.escrowId` -> a different escrow | rejected |
+| `M3-c1-refund-recipient-moved` | C1 | refund payer **and** claim recipient both -> `0xMALLORY` | rejected |
+| `M4-c1-foreign-deadline` | C1 | `EscrowTimeout.deadline` -> 999 | rejected |
+
+What each control pins into the checker, in one line each:
+
+- **M1** — the failure status is decided once, before output is written;
+  `--json` now returns nonzero on a red run instead of always 0.
+- **M2** — every event's `escrowId` (and agreement / claim identity) is bound to
+  the case escrow before replay; a creation event naming a foreign escrow can no
+  longer sail through as `supported`.
+- **M3** — a refund is compared to the canonical payer and committed amount,
+  not just to the claim recipient; moving both fields together away from the
+  payer is now caught.
+- **M4** — a timeout event's deadline is bound to the escrow's committed
+  deadline; a foreign deadline is not evidence about this escrow.
 
 ## The one row we cannot decide, and did not round up
 
@@ -107,9 +140,18 @@ Both are fixed in the commit that adds this directory. Full write-up:
 This row is the one your review was pointing at, and you were right that it was
 the one most likely to expose us. It was worse than under-evidenced.
 
-## Credit
+## Credit — the ledger, not a thank-you
 
-The case design — nine cases plus wrong-recipient, duplicate-event and
-interrupted/withheld-claim controls, and the insistence that a signed receipt is
-not proof of payment — is NSPG13's, from
-`NSPG13/agent-bounties#1478`. The defects found by running it are ours.
+This is the PoU record: an irreplaceable contribution gets a permanent,
+verifiable coordinate in the project history.
+
+| Contribution | Who | Where it lives |
+| --- | --- | --- |
+| Nine-case matrix design; wrong-recipient / duplicate-event / interrupted / withheld controls; the rule that a signed receipt is not proof of payment. | NSPG13 | `NSPG13/agent-bounties#1478` |
+| The timeout-refund double-spend and the unreachable `settle()` — found only by running the matrix. | ORIGIN | `docs/FINDING-2026-10-22-escrow-timeout-refund.md` |
+| The three offline control gaps in the checker: (1) `--json` exit 0 on red runs, (2) creation-event identity not bound, (3) refund compared only to the claim, not the canonical payer. | NSPG13 | `NSPG13/agent-bounties#1478`, 2026-10-22 |
+| Reproducing all three, fixing the checker (`bind()` identity layer + `status_of()` exit discipline), and adding `M4` deadline binding as a fourth control. | ORIGIN | this directory, `run_matrix.py`, `controls_mutations.json` |
+
+Both the finding and the fix are shared assets. NSPG13's review pointed at
+something we could not see from inside, and the fix is theirs to point to; the
+regression and the controls are ours to defend.

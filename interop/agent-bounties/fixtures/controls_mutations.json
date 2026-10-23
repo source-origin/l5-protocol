@@ -1,0 +1,49 @@
+{
+  "schema": "origin-l5-escrow-mutations/1",
+  "generated": "2026-10-23",
+  "purpose": "The three offline controls requested in NSPG13/agent-bounties#1478. Each one mutates a baseline case in a way the checker must catch. A control passes only when the checker now returns the stated verdict; if the checker still agrees with the pre-mutation claim, the control fails and the run is red.",
+  "note": "These are deliberate corruptions of synthetic fixtures. They are never part of the nine-row matrix and never inflate its counts.",
+  "controls": [
+    {
+      "id": "M2-c4-foreign-escrow-id",
+      "kind": "fixture",
+      "base": "C4-delivered-and-settled",
+      "edit": [
+        ["events[0].escrowId", "0xesc-foreign-c4"]
+      ],
+      "expect": "rejected",
+      "why": "The creation event names an escrow other than the case escrow. Before identity binding, replay ignored escrowId on every event except EscrowReleased, so the row still reported supported."
+    },
+    {
+      "id": "M3-c1-refund-recipient-moved",
+      "kind": "fixture",
+      "base": "C1-funded-not-delivered",
+      "edit": [
+        ["events[3].payer", "0xMALLORY"],
+        ["claim.recipient", "0xMALLORY"]
+      ],
+      "expect": "rejected",
+      "why": "Refund recipient and claimed recipient are moved together, away from the escrow payer. Comparing the two against each other alone cannot catch this; the refund must also be compared to the canonical payer and the committed amount."
+    },
+    {
+      "id": "M4-c1-amount-with-foreign-deadline",
+      "kind": "fixture",
+      "base": "C1-funded-not-delivered",
+      "edit": [
+        ["events[2].deadline", 999]
+      ],
+      "expect": "rejected",
+      "why": "A timeout event carrying a deadline the escrow never committed to is not evidence about this escrow. Deadline is part of the identity binding, not a free-floating field."
+    },
+    {
+      "id": "M1-exit-status-branch",
+      "kind": "process",
+      "base": "C1-funded-not-delivered",
+      "edit": [
+        ["expected", "rejected"]
+      ],
+      "expect": "nonzero-in-both-branches",
+      "why": "Force a row mismatch, then compare the exit status of the text branch and the --json branch. Before the fix the text branch returned 1 and --json returned 0, so a harness that parsed JSON could not tell a red run from a green one."
+    }
+  ]
+}
