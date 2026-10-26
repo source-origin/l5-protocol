@@ -8,27 +8,18 @@ pragma solidity ^0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {AgentView} from "./L5Types.sol";
 
-/// @notice 从 CreditScore 视角读取 AgentIdentity：仅声明需要读取的字段视图与 getter
-/// @dev 字段视图顺序必须与 AgentIdentity.Agent 逐一对应，ABI 才能正确解码
-struct AgentView {
-    uint256 totalRevenue;
-    uint256 totalTransactions;
-    uint256 totalSuccessful;
-    uint256 reputationScore;
-    uint256 stakedAmount;
-    uint256 endorsementCount;
-    uint256 longevityBonus;
-    uint256 slashCount;
-    uint256 contributionClockScore;
-    uint256 totalQuality;
-    uint256 totalComplexity;
-    uint256 totalTimeliness;
-}
-
-/// @notice 与被调合约 AgentIdentity 对齐的最小接口（只读所需 getter）
+/// @notice 与被调合约对齐的只读接口。
+/// @dev L5-01 (2026-10-26): this used to declare `agents()` returning `AgentView`.
+///      `AgentIdentity.agents()` returns `Agent` — a struct that STARTS with
+///      address/uint256/string/string/… — so a 12-word `AgentView` decoded word 2
+///      (a string offset) as `totalSuccessful` and minted the top credit score
+///      for a brand-new agent. Never decode one struct into another's shape:
+///      the projection is now produced by the identity contract itself and the
+///      struct is imported from a single source of truth (`src/L5Types.sol`).
 interface IAgentIdentity {
-    function agents(address agentAddr) external view returns (AgentView memory);
+    function creditView(address agentAddr) external view returns (AgentView memory);
     function getAgentStatus(address agentAddr) external view returns (uint8 status);
 }
 
@@ -109,7 +100,11 @@ contract CreditScore is Ownable2Step {
     /* ============ 核心：计算信用分 ============ */
     /// @notice 计算某 Agent 的信用分并持久化，返回分数与可调动 YUAN 上限
     function calculateCredit(address agentAddr) external returns (uint256 score, uint256 limit) {
-        AgentView memory a = identity.agents(agentAddr);
+        AgentView memory a = identity.creditView(agentAddr);
+
+        // L5-01 defense in depth: a self-inconsistent view means the projection
+        // is wrong again. Fail closed instead of minting credit out of garbage.
+        require(a.totalSuccessful <= a.totalTransactions, "CreditScore: inconsistent view");
 
         // 维度1：成功率 [0-1 scaled]
         uint256 successRate = a.totalTransactions == 0

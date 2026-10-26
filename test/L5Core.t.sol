@@ -77,6 +77,7 @@ contract L5CoreTest is Test {
 
     function test_RecordContribution_RaisesReputation() public {
         _registerAlice();
+        identity.setContributionRecorder(address(this)); // L5-02: write access is no longer public
         uint256 before = identity.getAgent(alice).reputationScore;
         for (uint256 i = 0; i < 10; i++) {
             identity.recordContribution(alice, 90, 90, 90);

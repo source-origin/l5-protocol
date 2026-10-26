@@ -108,6 +108,13 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     uint256 public disputeBondBps = 100; // 1%
     uint256 public challengePeriod = 7 days;
     uint256 public channelDisputeBond = 0.05 ether;
+
+    /// @notice L5-03 fix (2026-10-26): the only address allowed to receive
+    ///         value from crossChainSettle. While unset, cross-chain settlement
+    ///         reverts (fail-closed) instead of silently stranding funds.
+    address public crossChainBridge;
+
+    event CrossChainBridgeSet(address indexed bridge, uint256 timestamp);
     uint256 public constant MAX_DISPUTE_BOND_BPS = 500; // 5%上限
 
     // AgentAgreement合约引用
@@ -598,18 +605,39 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         }
     }
 
-    /// @notice CCTP跨链结算钩子
-    function crossChainSettle(bytes32 channelId, uint256 destChainId, address destPayee, uint256 amount) external {
+    /// @notice Set the bridge that receives cross-chain settlement value.
+    function setCrossChainBridge(address bridge) external onlyOwner {
+        crossChainBridge = bridge;
+        emit CrossChainBridgeSet(bridge, block.timestamp);
+    }
+
+    /// @notice CCTP cross-chain settlement hook
+    /// @dev L5-03 fix (2026-10-26): the original debited ch.balance while moving
+    ///      NO value, so the ETH stayed in this contract with no accounting and
+    ///      settleChannel was bricked for any later total above the reduced
+    ///      balance. Now: value leaves atomically to the configured bridge, and
+    ///      the function is fail-closed until a bridge is set. Sender-only -- the
+    ///      receiver must not be able to push the payer channel funds outward.
+    function crossChainSettle(bytes32 channelId, uint256 destChainId, address destPayee, uint256 amount)
+        external
+        nonReentrant
+    {
         PaymentChannel storage ch = channels[channelId];
-        require(ch.sender == msg.sender || ch.receiver == msg.sender, "Channel: not a party");
+        require(ch.sender == msg.sender, "Channel: only sender");
         require(amount <= ch.balance, "Channel: exceeds balance");
         require(ch.state == ChannelState.Open || ch.state == ChannelState.Active, "Channel: not open");
+        require(destPayee != address(0), "Channel: zero dest payee");
+
+        address bridge = crossChainBridge;
+        require(bridge != address(0), "Channel: cross-chain bridge not configured");
 
         ch.balance -= amount;
         ch.lastUsedAt = block.timestamp;
 
+        (bool sent,) = bridge.call{value: amount}("");
+        require(sent, "Channel: bridge transfer failed");
+
         emit CrossChainSettled(channelId, destChainId, destPayee, amount, block.timestamp);
-        // ⚠️ 未来：调用 Axelar / LayerZero / IBC 协议进行实际跨链转账
     }
 
     /// @dev ECDSA 签名恢复，强制规范 low-s 与 v∈{27,28}（OZ ECDSA.tryRecover）。

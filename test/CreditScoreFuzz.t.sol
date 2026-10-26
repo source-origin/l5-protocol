@@ -12,7 +12,7 @@ contract MockIdentity is IAgentIdentity {
         v = nv;
     }
 
-    function agents(address) external view returns (AgentView memory) {
+    function creditView(address) external view returns (AgentView memory) {
         return v;
     }
 
@@ -63,7 +63,7 @@ contract CreditScoreFuzzTest is Test {
         uint256 slashes
     ) public {
         txns = bound(txns, 0, 1e7);
-        succ = bound(succ, 0, 1e7);
+        succ = bound(succ, 0, txns); // L5-01: succ > txns is not a realizable view
         quality = bound(quality, 0, 1e7);
         endorsements = bound(endorsements, 0, 1e7);
         clock = bound(clock, 0, 1e7);

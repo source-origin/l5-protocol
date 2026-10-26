@@ -22,6 +22,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {AgentView} from "./L5Types.sol";
 
 /**
  * @title AgentIdentity
@@ -711,6 +712,27 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable2Step {
         return agents[agentAddr];
     }
 
+    /// @notice L5-01 fix (2026-10-26): the ONLY authoritative projection of an
+    ///         Agent for credit scoring. Built field by field from storage, so the
+    ///         compiler — not a comment — keeps it aligned with `Agent`. Consumers
+    ///         import the same `AgentView` from `src/L5Types.sol`; no other contract
+    ///         may decode this contract's storage layout into its own struct.
+    function creditView(address agentAddr) external view agentExists(agentAddr) returns (AgentView memory v) {
+        Agent storage a = agents[agentAddr];
+        v.totalRevenue = a.totalRevenue;
+        v.totalTransactions = a.totalTransactions;
+        v.totalSuccessful = a.totalSuccessful;
+        v.reputationScore = a.reputationScore;
+        v.stakedAmount = a.stakedAmount;
+        v.endorsementCount = a.endorsementCount;
+        v.longevityBonus = a.longevityBonus;
+        v.slashCount = a.slashCount;
+        v.contributionClockScore = a.contributionClockScore;
+        v.totalQuality = a.totalQuality;
+        v.totalComplexity = a.totalComplexity;
+        v.totalTimeliness = a.totalTimeliness;
+    }
+
     function getAgentByHandle(string calldata handle) external view returns (Agent memory) {
         address agentAddr = handleToAddress[handle];
         require(agentAddr != address(0), "Identity: handle not found");
@@ -766,18 +788,51 @@ contract AgentIdentity is ERC721, ERC721URIStorage, Ownable2Step {
         return (a, _computeReputationScore(agentAddr), a.contributionClockScore);
     }
 
-    /// @notice 记录贡献时钟分数（由贡献时钟合约调用）
+    /// @notice L5-02 fix (2026-10-26): contribution writes were permissionless.
+    ///         Any address could move any agent's contribution score — the same
+    ///         class of hole as the earlier C3 finding, missed in this function.
+    ///         Only the contribution-clock recorder may write, and it must be set
+    ///         explicitly by governance.
+    address public contributionRecorder;
+
+    event ContributionRecorderSet(address indexed recorder, uint256 timestamp);
+
+    error Identity_NotContributionRecorder(address caller);
+    error Identity_ContributionOutOfRange(uint256 value);
+
+    modifier onlyContributionRecorder() {
+        if (msg.sender != contributionRecorder) revert Identity_NotContributionRecorder(msg.sender);
+        _;
+    }
+
+    /// @notice Set the only address allowed to call recordContribution.
+    /// @dev Passing address(0) disables contribution recording entirely (fail-closed).
+    function setContributionRecorder(address recorder) external onlyOwner {
+        contributionRecorder = recorder;
+        emit ContributionRecorderSet(recorder, block.timestamp);
+    }
+
+    /// @notice 记录贡献时钟分数（只有 contributionRecorder 可调用）
+    /// @dev L5-02b fix: dimensions are 0-100 each. The old divisor was 1 ether,
+    ///      so `(100*100*100)/1e18 == 0` — the clock score never moved at all.
+    ///      A perfect contribution (100/100/100) now adds 1000 points.
     function recordContribution(address agentAddr, uint256 quality, uint256 complexity, uint256 timeliness)
         external
+        onlyContributionRecorder
         agentExists(agentAddr)
     {
+        if (quality > 100) revert Identity_ContributionOutOfRange(quality);
+        if (complexity > 100) revert Identity_ContributionOutOfRange(complexity);
+        if (timeliness > 100) revert Identity_ContributionOutOfRange(timeliness);
+
         Agent storage a = agents[agentAddr];
         a.totalQuality += quality;
         a.totalComplexity += complexity;
         a.totalTimeliness += timeliness;
 
-        uint256 clockScore = (quality * complexity * timeliness) / 1 ether;
-        a.contributionClockScore += clockScore;
+        uint256 clockScore = (quality * complexity * timeliness) / 1000;
+        uint256 newClock = a.contributionClockScore + clockScore;
+        a.contributionClockScore = newClock > SCORE_MAX ? SCORE_MAX : newClock;
 
         uint256 oldRep = a.reputationScore;
         a.reputationScore = _computeReputationScore(agentAddr);
