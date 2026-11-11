@@ -104,9 +104,22 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     bytes32[] private allEscrowIds;
     uint256 public escrowCount;
 
+    /// @notice 账实对账总账（VULN-A2A-0001 / G2 修复）
+    ///         本合约用单一 address(this).balance 持全部托管，没有按 escrowId 分账。
+    ///         后果：任何一笔“账面 > 实收”的记账错误，都会被别人的钱悄悄补上，
+    ///         链上没有任何报错，审计也看不见（干净池=锁死，脏池=正常）。
+    ///         totalHeld = 所有未结案托管的应收之和；每次付出前断言
+    ///         address(this).balance >= totalHeld，让亏损在**下一次付款时立刻暴露**。
+    uint256 public totalHeld;
+
     // 争议押金比例（基点）
     uint256 public disputeBondBps = 100; // 1%
     uint256 public challengePeriod = 7 days;
+    /// @notice D1：已交货但买方失联时，卖方可在 deadline 后这么久自行取款
+    uint256 public claimGracePeriod = 1 days;
+    /// @notice E1 修复：押金下限。整数除法会让 dust 托管的押金算成 0，
+    ///         变成“零成本乱告”。争议成本不应低于这个值。
+    uint256 public minDisputeBond = 1e12; // 0.000001 ETH 量级（与原生币精度无关，纯下限）
     uint256 public channelDisputeBond = 0.05 ether;
 
     /// @notice L5-03 fix (2026-10-26): the only address allowed to receive
@@ -181,6 +194,14 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
 
     modifier onlyState(bytes32 escrowId, EscrowState expectedState) {
         require(escrows[escrowId].state == expectedState, "Escrow: invalid state");
+        _;
+    }
+
+    /// @notice G2 修复：付款前必须先对账。
+    ///         本合约没有按 escrowId 分账，所以“账面 > 实收”的错会在脏池里静默通过
+    ///         （用别人的钱补上）。这里把亏损变成一笔硬失败，而不是静默。
+    modifier solvent() {
+        require(address(this).balance >= totalHeld, "Escrow: vault undercollateralized");
         _;
     }
 
@@ -280,6 +301,9 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         allEscrowIds.push(id);
         escrowCount++;
 
+        // 总账记增
+        totalHeld += msg.value;
+
         emit EscrowCreated(id, agreementId, msg.sender, payee, msg.value, block.timestamp);
         emit EscrowFunded(id, msg.sender, msg.value, block.timestamp);
 
@@ -297,6 +321,8 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     {
         Escrow storage esc = escrows[escrowId];
         require(msg.sender == esc.payee, "Escrow: only payee can verify");
+        // B1: “我交了”与“我证明了”必须在链上可区分。空 bytes 不能算交付。
+        require(proofOfDelivery.length > 0, "Escrow: empty proof");
 
         esc.proofOfDelivery = proofOfDelivery;
         esc.state = EscrowState.Verified;
@@ -305,7 +331,7 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Consumer确认释放资金给Provider
-    function release(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) {
+    function release(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) solvent() {
         Escrow storage esc = escrows[escrowId];
         require(msg.sender == esc.payer, "Escrow: only payer can release");
         _release(escrowId, esc);
@@ -319,6 +345,9 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         esc.state = EscrowState.Released;
         esc.releasedAt = block.timestamp;
 
+        // 总账减记（先减后转，失败则整笔回滚）
+        totalHeld -= amount;
+
         // 标记关联协议为Settled
         bytes32 agreementId = esc.agreementId;
         agentAgreement.markSettled(agreementId);
@@ -331,14 +360,31 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Consumer在Verified后确认结算（与release等价但更语义化）
-    function settle(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) {
+    function settle(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) solvent() {
         Escrow storage esc = escrows[escrowId];
         require(msg.sender == esc.payer, "Escrow: only payer can release");
         _release(escrowId, esc);
     }
 
+    /// @notice D1 修复：买方宕机时，卖方不必自付押金求人。
+    ///         条件全部是客观的：已交货(Verified) + 已过 deadline + 已过宽限期。
+    ///         不需要任何人签字，也不需要 owner 在线 —— 这正是 AI↔AI 无人值守的前提。
+    ///         前置：payee 作为 party 需先把协议条款推到 Completed（markSettled 要求）。
+    function claimAfterDeadline(bytes32 escrowId)
+        external
+        nonReentrant
+        solvent()
+        escrowExists(escrowId)
+        onlyState(escrowId, EscrowState.Verified)
+    {
+        Escrow storage esc = escrows[escrowId];
+        require(msg.sender == esc.payee, "Escrow: only payee can claim");
+        require(block.timestamp > esc.deadline + claimGracePeriod, "Escrow: grace not over");
+        _release(escrowId, esc);
+    }
+
     /// @notice 退款：超时或Consumer取消
-    function refund(bytes32 escrowId) external escrowExists(escrowId) {
+    function refund(bytes32 escrowId) external escrowExists(escrowId) solvent() {
         Escrow storage esc = escrows[escrowId];
 
         // 两种退款条件：
@@ -370,7 +416,16 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         (bool success,) = esc.payer.call{value: amount}("");
         require(success, "Escrow: refund transfer failed");
 
+        // 总账减记：本笔不再构成合约的付款义务
+        totalHeld -= amount;
+
         emit EscrowRefunded(escrowId, esc.payer, amount, block.timestamp);
+    }
+
+    /// @notice 争议押金的唯一计算入口（避免调用方/合约各算一遍走稀）
+    function requiredDisputeBond(bytes32 escrowId) public view returns (uint256) {
+        uint256 byBps = (escrows[escrowId].amount * disputeBondBps) / 10000;
+        return byBps < minDisputeBond ? minDisputeBond : byBps;
     }
 
     // / @notice 发起争议（需支付押金 = 托管金额 × disputeBondBps
@@ -382,17 +437,23 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         onlyState(escrowId, EscrowState.Verified)
     {
         Escrow storage esc = escrows[escrowId];
-        uint256 requiredBond = (esc.amount * disputeBondBps) / 10000;
+        uint256 requiredBond = requiredDisputeBond(escrowId);
 
         require(msg.value >= requiredBond, "Escrow: insufficient dispute bond");
 
-        esc.disputeBond = msg.value;
+        // VULN-A2A-0001: 记账必须取自“合约实际留下的值”，不得取自入参。
+        // 旧写法 esc.disputeBond = msg.value 会让账面 > 实收（多付部分已退回），
+        // resolveDispute 按账面转账时必超余额 → 永久 revert → 钱谁都拿不出来。
+        esc.disputeBond = requiredBond;
         esc.state = EscrowState.Disputed;
 
         if (msg.value > requiredBond) {
             (bool refunded,) = msg.sender.call{value: msg.value - requiredBond}("");
             require(refunded, "Escrow: bond refund failed");
         }
+
+        // 总账仅记入真正留下的押金
+        totalHeld += requiredBond;
 
         emit EscrowDisputed(escrowId, msg.sender, requiredBond, block.timestamp);
     }
@@ -403,6 +464,7 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         external
         onlyOwner
         nonReentrant
+        solvent()
         escrowExists(escrowId)
         onlyState(escrowId, EscrowState.Disputed)
     {
@@ -416,6 +478,7 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
 
         esc.state = EscrowState.Released;
         esc.releasedAt = block.timestamp;
+        totalHeld -= (escrowAmount + bondAmount);
 
         if (payeeWins) {
             // Provider获胜：

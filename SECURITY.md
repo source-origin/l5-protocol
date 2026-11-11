@@ -6,7 +6,8 @@ from you first.
 
 > ⚠️ **Status: research-grade.** These contracts are not yet professionally audited. **Do not use
 > with real funds.** Our own dated findings and fixes are published in
-> [`docs/SELF-AUDIT-2026-09-25.md`](docs/SELF-AUDIT-2026-09-25.md).
+> [`docs/SELF-AUDIT-2026-09-25.md`](docs/SELF-AUDIT-2026-09-25.md) and, more recently, in
+> [`docs/`](docs/) — latest: [`FINDING-2026-11-10-A2A-escrow-bond-lock.md`](docs/FINDING-2026-11-10-A2A-escrow-bond-lock.md).
 
 ## Reporting a vulnerability
 
