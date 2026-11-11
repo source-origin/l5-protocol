@@ -394,7 +394,12 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice 退款：超时或Consumer取消
-    function refund(bytes32 escrowId) external escrowExists(escrowId) solvent {
+    /// @dev    nonReentrant + CEI：总账必须在转账**之前**减记。
+    ///         之前的写法是转账成功后才 `totalHeld -= amount`，于是外部调用期间
+    ///         账本仍然显示“这笔还欠着”。虽然下一步仍是保守方向（余额高于账
+    ///         面，只会多拦不会多付），但「账本在外部调用期间是陈旧的」本身就是
+    ///         审计要反复解释的东西——让人不用解释，比解释得通更好。
+    function refund(bytes32 escrowId) external nonReentrant escrowExists(escrowId) solvent {
         Escrow storage esc = escrows[escrowId];
 
         // 两种退款条件：
@@ -422,12 +427,13 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
             emit EscrowTimeout(escrowId, esc.deadline, block.timestamp);
         }
 
+        // 总账减记：本笔不再构成合约的付款义务。
+        // 必须在转账前完成（CEI）——顺序反了，外部调用期间账本就是假的。
+        totalHeld -= amount;
+
         // 退款给Consumer
         (bool success,) = esc.payer.call{value: amount}("");
         require(success, "Escrow: refund transfer failed");
-
-        // 总账减记：本笔不再构成合约的付款义务
-        totalHeld -= amount;
 
         emit EscrowRefunded(escrowId, esc.payer, amount, block.timestamp);
     }
@@ -442,6 +448,7 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     function dispute(bytes32 escrowId)
         external
         payable
+        nonReentrant
         escrowExists(escrowId)
         onlyEscrowParty(escrowId)
         onlyState(escrowId, EscrowState.Verified)
@@ -457,13 +464,13 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         esc.disputeBond = requiredBond;
         esc.state = EscrowState.Disputed;
 
+        // 总账仅记入真正留下的押金，且必须在退回多付款**之前**记（CEI）。
+        totalHeld += requiredBond;
+
         if (msg.value > requiredBond) {
             (bool refunded,) = msg.sender.call{value: msg.value - requiredBond}("");
             require(refunded, "Escrow: bond refund failed");
         }
-
-        // 总账仅记入真正留下的押金
-        totalHeld += requiredBond;
 
         emit EscrowDisputed(escrowId, msg.sender, requiredBond, block.timestamp);
     }

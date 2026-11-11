@@ -105,7 +105,7 @@ i.e. free griefing. The cost of an accusation must not be zero.
 
 ## Regressions that must stay red-to-green
 
-`test/AgentEscrowRedTeam.t.sol` — 11 tests. Each defect gets a positive control, because a gate that
+`test/AgentEscrowRedTeam.t.sol` — 14 tests. Each defect gets a positive control, because a gate that
 rejects everything also passes the negative case.
 
 | Test | What it pins |
@@ -121,9 +121,29 @@ rejects everything also passes the negative case.
 | `test_G2_UndercollateralizedVault_Reverts` | `release` hard-reverts when short |
 | `test_G2_UndercollateralizedVault_ResolveDisputeReverts` | each payout path carries its own guard |
 | `testFuzz_G2_BalanceNeverBelowLedger` | invariant over 256 runs |
+| `test_ReentrantRefund_SecondWithdrawalIsBlocked` | a payer contract cannot withdraw the same escrow twice |
+| `test_Cei_TotalHeldIsCurrentDuringBondRefundCallback` | the ledger is already correct *during* the outbound call |
+| `test_RefundTwice_FromCleanEoa_SecondCallReverts` | control: duplicates are refused for a plain EOA too |
 
 **The lesson that outlives these tests:** a single-escrow test can never see G2. Balance-bearing
 contracts must be exercised twice — once on a clean vault, once on a vault that already holds funds.
+
+### The follow-up: the ledger was right, but only *after* the money left
+
+Running `forge lint` on the fixed tree surfaced `reentrancy-eth` at the refund transfer: the ledger
+update (`totalHeld -= amount`) sat **after** the external call. It was not exploitable as written —
+`refund()` sets `state = Cancelled` before paying, so a second entry hit "cannot refund". But "safe
+because of an ordering accident in a different statement" is not safe; it is one refactor away from
+not being safe, and nobody reading the payout line would know. Three changes:
+
+1. `nonReentrant` on `refund()` and `dispute()` (both make outbound calls).
+2. Ledger updated **before** the transfer in both functions (checks-effects-interactions).
+3. Two regressions that would have caught the old shape: a reentrant payer that tries to withdraw
+twice, and an observer that reads `totalHeld()` from inside the refund callback.
+
+Both new tests were verified by mutation: removing `nonReentrant`, or moving `totalHeld +=` back
+after the call, makes them go red (`tmp/mutcheck_cei.py`, 3/3). A gate that has never been seen to
+fail is decoration.
 
 ---
 

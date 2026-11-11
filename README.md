@@ -39,7 +39,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 | **YUAN.sol** | ORIGIN native token | settlement unit for agent value flow |
 | **X402FacilitatorAdapter.sol** | x402 → L5x402 facilitator adapter | maps an x402 `exact` payload to a receipt; the `nonce` becomes the `requestId` (shared join key) |
 
-**Layout:** `src/` (10 contracts) · `test/` (25 suites / 188 tests) · `script/` (`DeployGovernance.s.sol` — 2-of-3 Safe + 48h timelock) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
+**Layout:** `src/` (10 contracts) · `test/` (25 suites / 191 tests) · `script/` (`DeployGovernance.s.sol` — 2-of-3 Safe + 48h timelock) · `lib/` (forge-std + openzeppelin-contracts, pinned as submodules).
 
 **Audit note:** contracts are a work-in-progress research-grade implementation. Do **not** use with real funds without a professional audit. A dated record of our own findings and fixes is kept in [`docs/SELF-AUDIT-2026-09-25.md`](docs/SELF-AUDIT-2026-09-25.md); how to report a vulnerability privately is in [`SECURITY.md`](SECURITY.md).
 
@@ -47,7 +47,7 @@ This repo ships the **L5 settlement core** as interoperable, auditable source co
 
 ## 🧪 Tests (`test/`)
 
-Foundry suite — **188 tests across 25 suites, all green** (`forge test`, measured 2026-11-11):
+Foundry suite — **191 tests across 25 suites, all green** (`forge test`, measured 2026-11-11):
 
 - `L5Core.t.sol` (15) — identity, agreement + escrow lifecycle, payment channels, reputation
 - `L5Delegation.t.sol` (15) — delegated authority, revocation, boundary attestation; a delegated spend draws the delegator's budget within the policy caps (M2)
@@ -73,7 +73,7 @@ Foundry suite — **188 tests across 25 suites, all green** (`forge test`, measu
 - `L5_01_ABIMismatch_Regression` (3) — wrong-struct decode of `agents()` (L5-01)
 - `L5_02_NoAuth_Regression` (6) — unauthenticated `recordContribution` (L5-02)
 - `L5_03_Stranding_Regression` (5) — `crossChainSettle` without a transfer (L5-03)
-- `AgentEscrowRedTeam.t.sol` (11) — `dispute()` ledger-vs-vault lock, empty proof, payee-without-payer exit, and the dirty-vault invariant that a single-escrow test can never see
+- `AgentEscrowRedTeam.t.sol` (14) — `dispute()` ledger-vs-vault lock, empty proof, payee-without-payer exit, the dirty-vault invariant a single-escrow test can never see, and CEI/reentrancy on the two payout entry points
 
 (`MockERC20.t.sol` provides the test token used by the delegation/x402 suites.)
 
@@ -91,7 +91,7 @@ python demo/tests/test_l5_offchain.py         # off-chain test suite
 ```bash
 git submodule update --init --recursive   # pins forge-std + openzeppelin-contracts
 forge build --sizes
-forge test -vvv                            # expect: 188 passed, 0 failed
+forge test -vvv                            # expect: 191 passed, 0 failed
 ```
 
 ---

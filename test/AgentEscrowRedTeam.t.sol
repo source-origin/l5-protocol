@@ -4,6 +4,88 @@ pragma solidity ^0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {AgentAgreement} from "src/AgentAgreement.sol";
 import {AgentEscrow} from "src/AgentEscrow.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+/// @notice A payer that tries to withdraw twice.
+/// @dev    The interesting part is not that it fails -- it is that before the fix
+///         `totalHeld` was decremented AFTER the transfer, so during that transfer
+///         the ledger still claimed the escrow was owed. Correct behaviour today
+///         depends on the state check, which is one edit away from being edited.
+///
+///         Etched onto an EOA's address (vm.etch) so it can hold a private key:
+///         AgentAgreement verifies EIP-712 signatures against msg.sender, and a
+///         freshly deployed contract cannot sign for itself. Same reason real
+///         agents are smart accounts, not EOAs -- the test had to borrow the
+///         shape of the thing it is testing.
+contract ReentrantPayer {
+    AgentEscrow public vault;
+    bytes32 public eid;
+    uint256 public received;
+    uint256 public attempts;
+    bytes4 public blockedWith;
+    bool private inFlight;
+
+    function init(AgentEscrow v) external {
+        vault = v;
+    }
+
+    function setEscrow(bytes32 id) external {
+        eid = id;
+    }
+
+    function fund(bytes32 agreementId, address payee, uint256 price, uint256 deadline)
+        external
+        payable
+        returns (bytes32)
+    {
+        return vault.createAndFund{value: price}(agreementId, payee, deadline);
+    }
+
+    function cancel() external {
+        vault.refund(eid);
+    }
+
+    receive() external payable {
+        received += msg.value;
+        if (!inFlight) {
+            inFlight = true;
+            attempts++;
+            try vault.refund(eid) {}
+            catch (bytes memory err) {
+                bytes4 sel;
+                assembly {
+                    sel := mload(add(err, 0x20))
+                }
+                blockedWith = sel;
+            }
+        }
+    }
+}
+
+/// @notice Records what the ledger said *during* the refund of an overpaid bond.
+/// @dev    CEI regression. If `totalHeld` is updated after the external call, a
+///         contract being paid at that moment reads a stale number -- and any
+///         future guard that trusts that number is now reading a lie.
+contract BondOverpayer {
+    AgentEscrow public vault;
+    uint256 public ledgerSeenDuringCallback;
+    bool public calledBack;
+
+    function init(AgentEscrow v) external {
+        vault = v;
+    }
+
+    function disputeOverpaying(bytes32 eid, uint256 bond) external payable {
+        vault.dispute{value: bond + 1}(eid);
+    }
+
+    receive() external payable {
+        if (!calledBack) {
+            calledBack = true;
+            ledgerSeenDuringCallback = vault.totalHeld();
+        }
+    }
+}
 
 /// @title Regression: VULN-A2A-0001 and the three defects the red-team exercise found
 /// @notice Found 2026-11-10 by redteam_demo.py (a blue-team exercise that does NOT
@@ -392,5 +474,93 @@ contract AgentEscrowRedTeamTest is Test {
 
         assertEq(escrow.totalHeld(), 0, "ledger cleared");
         assertEq(address(escrow).balance, 0, "vault cleared");
+    }
+
+    // ------------------------------------------------- reentrancy / CEI
+
+    /// @notice A malicious payer cannot withdraw the same escrow twice.
+    function test_ReentrantRefund_SecondWithdrawalIsBlocked() public {
+        // Etch a payer contract onto bob's address so it can also sign EIP-712:
+        // AgentAgreement checks the signature against msg.sender, and a deployed
+        // contract has no key. (Same reason real agents use smart accounts.)
+        ReentrantPayer impl = new ReentrantPayer();
+        vm.etch(bob, address(impl).code);
+        ReentrantPayer payer = ReentrantPayer(payable(bob));
+        payer.init(escrow);
+
+        AgentAgreement.AgentParty[] memory p = new AgentAgreement.AgentParty[](2);
+        p[0] = AgentAgreement.AgentParty({
+            agentAddr: bob, role: AgentAgreement.PartyRole.Consumer, signature: new bytes(0), signedAt: 0
+        });
+        p[1] = AgentAgreement.AgentParty({
+            agentAddr: alice, role: AgentAgreement.PartyRole.Provider, signature: new bytes(0), signedAt: 0
+        });
+        vm.prank(bob);
+        bytes32 id = agreement.createAgreement("reentrant", "deliverable", p, _terms(), PRICE);
+        vm.prank(bob);
+        agreement.propose(id);
+        bytes32 h = agreement.getAgreement(id).agreementHash;
+        bytes memory s1 = _sig(h, kBob);
+        vm.prank(bob);
+        agreement.signAgreement(id, s1);
+        bytes memory s2 = _sig(h, kAlice);
+        vm.prank(alice);
+        agreement.signAgreement(id, s2);
+
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes32 eid = payer.fund(id, alice, PRICE, deadline);
+        payer.setEscrow(eid);
+
+        payer.cancel();
+
+        assertEq(payer.attempts(), 1, "the callback must actually have tried");
+        assertEq(
+            payer.blockedWith(),
+            ReentrancyGuard.ReentrancyGuardReentrantCall.selector,
+            "second withdrawal must die on the guard, not on a coincidence"
+        );
+        assertEq(payer.received(), PRICE, "exactly one refund leaves the vault");
+        assertEq(uint8(escrow.getEscrow(eid).state), uint8(AgentEscrow.EscrowState.Cancelled));
+        assertEq(escrow.totalHeld(), 0, "ledger must be back to zero");
+        assertEq(address(escrow).balance, 0, "vault must be empty");
+    }
+
+    /// @notice The ledger must already be correct while the external call is
+    ///         running. Positive control: the callback must fire, or this test
+    ///         proves nothing (it would pass on a contract that never pays out).
+    function test_Cei_TotalHeldIsCurrentDuringBondRefundCallback() public {
+        bytes32 eid = _verified("cei-bond");
+        uint256 bond = _bondOf(eid);
+
+        // bob is the payee here, so he is an allowed disputer; etching lets the
+        // payee observe what the ledger says mid-transfer.
+        BondOverpayer impl = new BondOverpayer();
+        vm.etch(bob, address(impl).code);
+        BondOverpayer observer = BondOverpayer(payable(bob));
+        observer.init(escrow);
+
+        observer.disputeOverpaying{value: bond + 1}(eid, bond);
+
+        assertTrue(observer.calledBack(), "callback never ran -- assertion below would be vacuous");
+        assertEq(observer.ledgerSeenDuringCallback(), PRICE + bond, "ledger must not be stale mid-call");
+    }
+
+    /// @notice The guard is on the entry point, not on a lucky state check: a
+    ///         second call from a plain EOA in the same state is refused too.
+    ///         (Control for the test above -- blocking only reentrancy while
+    ///         allowing a normal duplicate would be a different bug.)
+    function test_RefundTwice_FromCleanEoa_SecondCallReverts() public {
+        bytes32 id = _executed("refund-twice");
+        uint256 deadline = block.timestamp + 1 hours;
+        vm.prank(alice);
+        bytes32 eid = escrow.createAndFund{value: PRICE}(id, bob, deadline);
+        vm.prank(alice);
+        escrow.refund(eid);
+
+        vm.prank(alice);
+        vm.expectRevert(bytes("Escrow: cannot refund"));
+        escrow.refund(eid);
+        assertEq(escrow.totalHeld(), 0);
+        assertEq(address(escrow).balance, 0);
     }
 }
