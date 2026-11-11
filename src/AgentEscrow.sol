@@ -331,7 +331,12 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Consumer确认释放资金给Provider
-    function release(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) solvent() {
+    function release(bytes32 escrowId)
+        external
+        escrowExists(escrowId)
+        onlyState(escrowId, EscrowState.Verified)
+        solvent
+    {
         Escrow storage esc = escrows[escrowId];
         require(msg.sender == esc.payer, "Escrow: only payer can release");
         _release(escrowId, esc);
@@ -360,7 +365,12 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Consumer在Verified后确认结算（与release等价但更语义化）
-    function settle(bytes32 escrowId) external escrowExists(escrowId) onlyState(escrowId, EscrowState.Verified) solvent() {
+    function settle(bytes32 escrowId)
+        external
+        escrowExists(escrowId)
+        onlyState(escrowId, EscrowState.Verified)
+        solvent
+    {
         Escrow storage esc = escrows[escrowId];
         require(msg.sender == esc.payer, "Escrow: only payer can release");
         _release(escrowId, esc);
@@ -373,7 +383,7 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     function claimAfterDeadline(bytes32 escrowId)
         external
         nonReentrant
-        solvent()
+        solvent
         escrowExists(escrowId)
         onlyState(escrowId, EscrowState.Verified)
     {
@@ -384,7 +394,7 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice 退款：超时或Consumer取消
-    function refund(bytes32 escrowId) external escrowExists(escrowId) solvent() {
+    function refund(bytes32 escrowId) external escrowExists(escrowId) solvent {
         Escrow storage esc = escrows[escrowId];
 
         // 两种退款条件：
@@ -464,7 +474,7 @@ contract AgentEscrow is Ownable2Step, ReentrancyGuard {
         external
         onlyOwner
         nonReentrant
-        solvent()
+        solvent
         escrowExists(escrowId)
         onlyState(escrowId, EscrowState.Disputed)
     {
