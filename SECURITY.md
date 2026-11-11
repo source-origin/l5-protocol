@@ -7,6 +7,7 @@ it later.
 > ⚠️ **Status: research-grade.** These contracts have not been professionally audited.
 > **Do not use with real funds.** Our own findings, fixes, and the tests that keep them fixed are
 > published in [`docs/`](docs/):
+> [`SELF-AUDIT-2026-09-25.md`](docs/SELF-AUDIT-2026-09-25.md) ·
 > [`FINDING-2026-10-22-escrow-timeout-refund.md`](docs/FINDING-2026-10-22-escrow-timeout-refund.md) ·
 > [`FINDING-2026-10-26-L5-01-02-03.md`](docs/FINDING-2026-10-26-L5-01-02-03.md) ·
 > [`FINDING-2026-11-10-A2A-escrow-bond-lock.md`](docs/FINDING-2026-11-10-A2A-escrow-bond-lock.md) ·
@@ -102,6 +103,9 @@ They exist because we have already been on the wrong side of each one.
 | 2026-10-26 | L5-02 | high | `recordContribution` only checked `agentExists` → anyone could write contributions to any agent | fixed + regression test | same |
 | 2026-10-26 | L5-03 | medium | `crossChainSettle` debited `ch.balance` without transferring, and both sender and receiver could call it | fixed + regression test | same |
 | 2026-10-26 | L5-02b | high | unbounded intermediate in the score formula (`quality*complexity*timeliness / 1e18`) | fixed + regression test | same |
+| 2026-11-10 | A2A-escrow-bond-lock | high | overpaid dispute bond was recorded at `msg.value` but only `requiredBond` was kept → ledger > vault → `resolveDispute` reverts → the escrow is locked for **both** parties | fixed + regression test | [`docs/FINDING-2026-11-10-A2A-escrow-bond-lock.md`](docs/FINDING-2026-11-10-A2A-escrow-bond-lock.md) |
+| 2026-11-10 | A2A-b1/d1/g2 | medium | same pass: empty `proofOfDelivery` counted as delivery · payee had no exit if the payer went dark · no per-escrow accounting on a shared vault | fixed + regression test | same |
+| 2026-11-11 | escrow-cei | medium | both payout paths updated `totalHeld` *after* the outbound call (safe only by an ordering accident in a different statement) | fixed + `nonReentrant` + mutation-verified regressions | same |
 
 Each of the above is pinned by a test whose name says what it prevents; deleting the fix makes the
 suite red. That is the only form of "we fixed it" we accept.
